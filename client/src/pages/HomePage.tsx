@@ -260,35 +260,35 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-blue-950 dark:to-indigo-950">
+    <div className="min-h-screen bg-background evtaar-gradient-bg evtaar-animated-bg">
       {/* Header */}
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50 sticky top-0 z-50">
+      <header className="bg-card/95 backdrop-blur-md border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Video className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 evtaar-gradient-primary rounded-xl flex items-center justify-center evtaar-glow">
+                <Video className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold evtaar-text-gradient">
                   VideoConnect
                 </h1>
               </div>
             </div>
             
             <div className="flex items-center gap-4">
-              <ThemeToggle />
+              {/* <ThemeToggle /> */}
               
               <div className="flex items-center gap-3">
                 <Avatar className="w-8 h-8">
                   <AvatarImage src={user?.avatar} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm">
+                  <AvatarFallback className="evtaar-gradient-primary text-primary-foreground text-sm font-semibold">
                     {user?.displayName ? getInitials(user.displayName) : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden sm:block">
-                  <p className="text-sm font-medium">{user?.displayName}</p>
-                  <p className="text-xs text-gray-500">@{user?.username}</p>
+                  <p className="text-sm font-medium text-foreground">{user?.displayName}</p>
+                  <p className="text-xs text-muted-foreground">@{user?.username}</p>
                 </div>
               </div>
               
@@ -296,7 +296,7 @@ const HomePage: React.FC = () => {
                 variant="ghost" 
                 size="sm" 
                 onClick={handleLogout}
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                className="text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -314,11 +314,15 @@ const HomePage: React.FC = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Welcome back, <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{user?.displayName}</span>
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <Sparkles className="w-4 h-4" />
+            First of its Kind Business Platform
+          </div>
+          <h2 className="text-4xl font-bold text-foreground mb-4">
+            Welcome back, <span className="evtaar-text-gradient">{user?.displayName}</span>
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Ready to connect? Join an existing room or create a new one to start your next video collaboration.
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            All-in-One Growth Engine for Modern Businesses. Connect, collaborate, and scale with cutting-edge AI tools.
           </p>
         </motion.div>
 
@@ -330,16 +334,16 @@ const HomePage: React.FC = () => {
           className="grid md:grid-cols-2 gap-6 mb-12"
         >
           {/* Join Room Card */}
-          <Card className="relative overflow-hidden bg-gradient-to-br from-white to-blue-50/50 dark:from-gray-900 dark:to-blue-950/30 border-0 shadow-xl">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full -mr-16 -mt-16" />
+          <Card className="relative overflow-hidden evtaar-card border-card-border">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16" />
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <ArrowRight className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 evtaar-gradient-primary rounded-lg flex items-center justify-center evtaar-glow">
+                  <ArrowRight className="w-6 h-6 text-primary-foreground" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl">Join Room</CardTitle>
-                  <CardDescription>Enter a room code to join an existing meeting</CardDescription>
+                  <CardTitle className="text-xl text-foreground">Join Room</CardTitle>
+                  <CardDescription className="text-muted-foreground">Enter a room code to join an existing meeting</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -353,19 +357,19 @@ const HomePage: React.FC = () => {
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="roomCode">Room Code</Label>
-                  <Input
-                    id="roomCode"
-                    type="text"
-                    placeholder="Enter room code"
-                    value={roomCode}
-                    onChange={(e) => setRoomCode(e.target.value)}
-                    className="bg-white/50 dark:bg-gray-800/50"
-                    disabled={isLoading}
-                  />
+                    <Input
+                      id="roomCode"
+                      type="text"
+                      placeholder="Enter room code"
+                      value={roomCode}
+                      onChange={(e) => setRoomCode(e.target.value)}
+                      className="bg-input border-border focus:border-primary focus:ring-primary/20"
+                      disabled={isLoading}
+                    />
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                  className="w-full evtaar-gradient-primary btn-primary text-primary-foreground font-semibold"
                   disabled={isLoading || !roomCode.trim()}
                 >
                   {isLoading ? (
@@ -385,16 +389,16 @@ const HomePage: React.FC = () => {
           </Card>
 
           {/* Create Room Card */}
-          <Card className="relative overflow-hidden bg-gradient-to-br from-white to-purple-50/50 dark:from-gray-900 dark:to-purple-950/30 border-0 shadow-xl">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full -mr-16 -mt-16" />
+          <Card className="relative overflow-hidden evtaar-card border-card-border">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -mr-16 -mt-16" />
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <Plus className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 evtaar-gradient-primary rounded-lg flex items-center justify-center evtaar-glow">
+                  <Plus className="w-6 h-6 text-primary-foreground" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl">Create Room</CardTitle>
-                  <CardDescription>Start a new meeting and invite others</CardDescription>
+                  <CardTitle className="text-xl text-foreground">Create Room</CardTitle>
+                  <CardDescription className="text-muted-foreground">Start a new meeting and invite others</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -471,13 +475,13 @@ const HomePage: React.FC = () => {
                       placeholder="Give your room a name"
                       value={newRoomName}
                       onChange={(e) => setNewRoomName(e.target.value)}
-                      className="bg-white/50 dark:bg-gray-800/50"
+                      className="bg-input border-border focus:border-primary focus:ring-primary/20"
                       disabled={isLoading}
                     />
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                    className="w-full evtaar-gradient-primary btn-primary text-primary-foreground font-semibold"
                     disabled={isLoading || !newRoomName.trim()}
                   >
                     {isLoading ? (
@@ -504,15 +508,15 @@ const HomePage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-0 shadow-xl">
+          <Card className="evtaar-card border-card-border">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-blue-600" />
+                  <CardTitle className="text-2xl flex items-center gap-2 text-foreground">
+                    <Clock className="w-5 h-5 text-primary" />
                     Recent Rooms
                   </CardTitle>
-                  <CardDescription>Quickly rejoin your recent video calls</CardDescription>
+                  <CardDescription className="text-muted-foreground">Quickly rejoin your recent video calls</CardDescription>
                 </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -520,7 +524,7 @@ const HomePage: React.FC = () => {
                     placeholder="Search rooms..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64 bg-white/50 dark:bg-gray-800/50"
+                    className="pl-10 w-64 bg-input border-border focus:border-primary focus:ring-primary/20"
                   />
                 </div>
               </div>
@@ -528,13 +532,13 @@ const HomePage: React.FC = () => {
             <CardContent>
               {filteredRooms.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Video className="w-8 h-8 text-gray-400" />
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Video className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  <h3 className="text-lg font-medium text-foreground mb-2">
                     {searchQuery ? 'No rooms found' : 'No recent rooms'}
                   </h3>
-                  <p className="text-gray-500 dark:text-gray-400">
+                  <p className="text-muted-foreground">
                     {searchQuery 
                       ? 'Try adjusting your search terms' 
                       : 'Create your first room to get started'
@@ -549,15 +553,15 @@ const HomePage: React.FC = () => {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-center justify-between p-4 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-gray-200/50 dark:border-gray-700/50 hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
+                      className="flex items-center justify-between p-4 bg-card rounded-lg border border-card-border hover:shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-primary/20"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
-                          <Hash className="w-5 h-5 text-white" />
+                        <div className="w-12 h-12 evtaar-gradient-primary rounded-lg flex items-center justify-center evtaar-glow">
+                          <Hash className="w-5 h-5 text-primary-foreground" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{room.name}</h3>
-                          <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                          <h3 className="font-semibold text-foreground">{room.name}</h3>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
                             <span>Code: {room.code}</span>
                             <span>•</span>
                             <span>{room.lastActivity}</span>
@@ -571,14 +575,14 @@ const HomePage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         {room.isActive && (
-                          <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse" />
+                          <Badge variant="default" className="bg-primary/10 text-primary border border-primary/20">
+                            <div className="w-1.5 h-1.5 bg-primary rounded-full mr-1 animate-pulse" />
                             Active
                           </Badge>
                         )}
                         <Button 
                           onClick={() => handleJoinRoom(room.code)}
-                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                          className="evtaar-gradient-primary btn-primary text-primary-foreground font-semibold"
                         >
                           <ArrowRight className="w-4 h-4 mr-1" />
                           Join

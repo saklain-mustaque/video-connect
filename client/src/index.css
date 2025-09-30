@@ -122,6 +122,96 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+.evtaar {
+  --button-outline: rgba(255,255,255, .15);
+  --badge-outline: rgba(255,255,255, .08);
+
+  --opaque-button-border-intensity: 8;
+
+  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  --elevate-1: rgba(255,255,255, .06);
+  --elevate-2: rgba(255,255,255, .12);
+
+  /* Enhanced Evtaar Brand Colors - Matching actual website */
+  --background: 218 100% 8%;  /* Brighter navy blue like actual Evtaar */
+
+  --foreground: 50 100% 97%;  /* Crisp white with slight warm tint */
+
+  --border: 218 50% 20%;
+
+  --card: 218 90% 12%;
+
+  --card-foreground: 50 100% 97%;
+
+  --card-border: 218 45% 22%;
+
+  --sidebar: 218 95% 10%;
+
+  --sidebar-foreground: 50 100% 97%;
+
+  --sidebar-border: 218 55% 18%;
+
+  --popover: 218 85% 13%;
+
+  --popover-foreground: 50 100% 97%;
+
+  --popover-border: 218 50% 24%;
+
+  --primary: 57 100% 69%;  /* Brighter yellow matching #fffa5c */
+
+  --primary-foreground: 218 100% 8%;  /* Navy for contrast */
+
+  --secondary: 218 45% 25%;
+
+  --secondary-foreground: 50 100% 97%;
+
+  --muted: 218 35% 18%;
+
+  --muted-foreground: 218 25% 72%;
+
+  --accent: 57 100% 69%;  /* Matching brighter yellow accent */
+
+  --accent-foreground: 218 100% 8%;
+
+  --destructive: 0 75% 58%;
+
+  --destructive-foreground: 0 0% 98%;
+
+  --sidebar-primary: 57 100% 69%;
+
+  --sidebar-primary-foreground: 218 100% 8%;
+
+  --sidebar-accent: 218 45% 20%;
+
+  --sidebar-accent-foreground: 50 95% 94%;
+
+  --sidebar-ring: 57 100% 69%;
+
+  --input: 218 40% 20%;
+  --ring: 57 100% 69%;
+  --chart-1: 57 100% 69%;
+  --chart-2: 218 75% 58%;
+  --chart-3: 180 60% 58%;
+  --chart-4: 280 65% 63%;
+  --chart-5: 30 80% 68%;
+
+  /* Enhanced shadows for depth */
+  --shadow-2xs: 0px 1px 2px 0px hsl(218 100% 4% / 0.6);
+  --shadow-xs: 0px 1px 3px 0px hsl(218 100% 4% / 0.7), 0px 1px 2px 0px hsl(218 100% 4% / 0.4);
+  --shadow-sm: 0px 1px 3px 0px hsl(218 100% 4% / 0.7), 0px 1px 2px -1px hsl(218 100% 4% / 0.6);
+  --shadow: 0px 1px 3px 0px hsl(218 100% 4% / 0.7), 0px 1px 2px -1px hsl(218 100% 4% / 0.6);
+  --shadow-md: 0px 4px 6px -1px hsl(218 100% 4% / 0.7), 0px 2px 4px -1px hsl(218 100% 4% / 0.4);
+  --shadow-lg: 0px 10px 15px -3px hsl(218 100% 4% / 0.7), 0px 4px 6px -2px hsl(218 100% 4% / 0.4);
+  --shadow-xl: 0px 20px 25px -5px hsl(218 100% 4% / 0.7), 0px 10px 10px -5px hsl(218 100% 4% / 0.3);
+  --shadow-2xl: 0px 25px 50px -12px hsl(218 100% 4% / 0.8);
+
+  /* Evtaar-specific custom properties */
+  --evtaar-gradient-primary: linear-gradient(135deg, hsl(58, 66%, 64%) 0%, hsl(55, 92%, 53%) 100%);
+  --evtaar-gradient-secondary: linear-gradient(135deg, hsl(213 100% 7%) 0%, hsl(213 80% 12%) 100%);
+  --evtaar-gradient-card: linear-gradient(145deg, hsl(213 95% 10%) 0%, hsl(213 85% 8%) 100%);
+  --evtaar-glow: 0 0 30px hsla(58, 100%, 68%, 0.3);
+}
+
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
@@ -209,12 +299,7 @@
   * {
     @apply border-border;
   }
-
-  html, body, #root {
-    @apply h-full w-full m-0 p-0;
-    overflow: hidden;
-  }
-
+  
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
@@ -241,6 +326,22 @@
  * need to be distinguished from eachother visually.
  */
 @layer utilities {
+
+  /* Theme Toggle Icon Visibility */
+  .evtaar .theme-icon-sun,
+  .evtaar .theme-icon-moon {
+    display: none;
+  }
+  
+  .dark .theme-icon-sun,
+  .dark .theme-icon-evtaar {
+    display: none;
+  }
+  
+  :not(.dark):not(.evtaar) .theme-icon-moon,
+  :not(.dark):not(.evtaar) .theme-icon-evtaar {
+    display: none;
+  }
 
   /* Hide ugly search cancel button in Chrome until we can style it properly */
   input[type="search"]::-webkit-search-cancel-button {
@@ -329,5 +430,183 @@
   .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
+  }
+
+  /* Evtaar-specific utilities */
+  .evtaar-gradient-bg {
+    background: var(--evtaar-gradient-secondary);
+  }
+  
+  .evtaar-gradient-primary {
+    background: var(--evtaar-gradient-primary);
+  }
+  
+  .evtaar-card-gradient {
+    background: var(--evtaar-gradient-card);
+  }
+  
+  .evtaar-glow {
+    box-shadow: var(--evtaar-glow);
+  }
+  
+  .evtaar-text-gradient {
+    background: var(--evtaar-gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  /* Evtaar button styles */
+  .evtaar .btn-primary {
+    background: var(--evtaar-gradient-primary);
+    border: none;
+    color: hsl(var(--primary-foreground));
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  
+  .evtaar .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--evtaar-glow);
+  }
+  
+  /* Enhanced card styling for Evtaar */
+  .evtaar-card {
+    background: var(--evtaar-gradient-card);
+    border: 1px solid hsl(var(--card-border));
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(8px);
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .evtaar-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, hsla(58, 100%, 68%, 0.3) 0%, transparent 50%, hsla(58, 100%, 68%, 0.1) 100%);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  
+  .evtaar-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl), var(--evtaar-glow);
+  }
+  
+  /* Enhanced background with animated particles effect */
+  .evtaar-animated-bg {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .evtaar-animated-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 25% 25%, hsla(57, 100%, 69%, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, hsla(57, 100%, 69%, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 50% 10%, hsla(218, 90%, 22%, 0.2) 0%, transparent 50%);
+    animation: evtaarFloating 20s ease-in-out infinite;
+    pointer-events: none;
+  }
+  
+  @keyframes evtaarFloating {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33% { transform: translateY(-10px) rotate(1deg); }
+    66% { transform: translateY(5px) rotate(-1deg); }
+  }
+  
+  /* Enhanced button interactions */
+  .evtaar .btn-primary:active {
+    transform: translateY(0px) scale(0.98);
+  }
+  
+  /* Smooth focus states */
+  .evtaar input:focus,
+  .evtaar textarea:focus {
+    box-shadow: 0 0 0 3px hsla(57, 100%, 69%, 0.25);
+  }
+  
+  /* Enhanced text gradient with animation */
+  .evtaar-text-gradient-animated {
+    background: linear-gradient(45deg, #fffa5c, #e7da16, #fffd70, #fffa5c);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientFlow 3s ease infinite;
+  }
+  
+  @keyframes gradientFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  
+  /* Dropdown menu item visibility fixes for all themes */
+  .evtaar [role="menuitem"],
+  .evtaar [data-radix-collection-item] {
+    color: hsl(var(--popover-foreground)) !important;
+  }
+  
+  .evtaar [role="menuitem"]:hover,
+  .evtaar [data-radix-collection-item]:hover {
+    background-color: hsla(var(--primary), 0.1) !important;
+    color: hsl(var(--primary)) !important;
+  }
+  
+  .evtaar [role="menuitem"]:focus,
+  .evtaar [data-radix-collection-item]:focus {
+    background-color: hsla(var(--primary), 0.15) !important;
+    color: hsl(var(--primary)) !important;
+    outline: none;
+  }
+  
+  /* Theme toggle button visibility fix - using stronger selectors */
+  .evtaar button[data-testid="button-theme-toggle"] {
+    color: hsl(var(--foreground)) !important;
+    background-color: hsla(var(--foreground), 0.05) !important;
+    border: 1px solid hsla(var(--foreground), 0.2) !important;
+  }
+  
+  .evtaar button[data-testid="button-theme-toggle"]:hover {
+    color: hsl(var(--primary)) !important;
+    background-color: hsla(var(--primary), 0.1) !important;
+    border-color: hsla(var(--primary), 0.4) !important;
+    box-shadow: 0 0 15px hsla(var(--primary), 0.3) !important;
+  }
+  
+  /* Ensure the theme icons are visible and inherit color */
+  .evtaar button[data-testid="button-theme-toggle"] .theme-icon-evtaar {
+    display: block !important;
+    color: hsl(var(--foreground)) !important;
+    stroke: currentColor !important;
+    fill: currentColor !important;
+  }
+  
+  .evtaar button[data-testid="button-theme-toggle"]:hover .theme-icon-evtaar {
+    color: hsl(var(--primary)) !important;
+    stroke: currentColor !important;
+    fill: currentColor !important;
+  }
+  
+  /* Hide screen reader text but keep button visible */
+  .evtaar button[data-testid="button-theme-toggle"] .sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border-width: 0 !important;
   }
 }

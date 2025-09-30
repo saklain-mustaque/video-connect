@@ -118,28 +118,28 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-purple-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background evtaar-gradient-bg evtaar-animated-bg flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
+        <Card className="evtaar-card border-card-border">
           <CardHeader className="text-center space-y-4 pb-8">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg"
+              className="mx-auto w-16 h-16 evtaar-gradient-primary rounded-2xl flex items-center justify-center evtaar-glow"
             >
-              <Video className="w-8 h-8 text-white" />
+              <Video className="w-8 h-8 text-primary-foreground" />
             </motion.div>
             <div>
-              <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <CardTitle className="text-3xl font-bold evtaar-text-gradient">
                 VideoConnect
               </CardTitle>
-              <CardDescription className="text-base mt-2">
+              <CardDescription className="text-base mt-2 text-muted-foreground">
                 Connect, collaborate, and create together
               </CardDescription>
             </div>
@@ -183,7 +183,7 @@ const AuthPage: React.FC = () => {
                         placeholder="Enter your username"
                         value={signinForm.username}
                         onChange={(e) => setSigninForm({ ...signinForm, username: e.target.value })}
-                        className={`pl-10 ${formErrors.username ? 'border-red-500' : ''}`}
+                        className={`pl-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.username ? 'border-destructive' : ''}`}
                         disabled={isLoading}
                       />
                     </div>
@@ -204,7 +204,7 @@ const AuthPage: React.FC = () => {
                         placeholder="Enter your password"
                         value={signinForm.password}
                         onChange={(e) => setSigninForm({ ...signinForm, password: e.target.value })}
-                        className={`pl-10 pr-10 ${formErrors.password ? 'border-red-500' : ''}`}
+                        className={`pl-10 pr-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.password ? 'border-destructive' : ''}`}
                         disabled={isLoading}
                       />
                       <button
@@ -222,7 +222,7 @@ const AuthPage: React.FC = () => {
                   
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium h-11"
+                    className="w-full evtaar-gradient-primary btn-primary text-primary-foreground font-semibold h-11"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -252,7 +252,7 @@ const AuthPage: React.FC = () => {
                           placeholder="Choose a username"
                           value={signupForm.username}
                           onChange={(e) => setSignupForm({ ...signupForm, username: e.target.value })}
-                          className={`pl-10 ${formErrors.username ? 'border-red-500' : ''}`}
+                          className={`pl-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.username ? 'border-destructive' : ''}`}
                           disabled={isLoading}
                         />
                       </div>
@@ -271,7 +271,7 @@ const AuthPage: React.FC = () => {
                         placeholder="How others will see you"
                         value={signupForm.displayName}
                         onChange={(e) => setSignupForm({ ...signupForm, displayName: e.target.value })}
-                        className={formErrors.displayName ? 'border-red-500' : ''}
+                        className={`bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.displayName ? 'border-destructive' : ''}`}
                         disabled={isLoading}
                       />
                       {formErrors.displayName && (
@@ -291,7 +291,7 @@ const AuthPage: React.FC = () => {
                           placeholder="your@email.com"
                           value={signupForm.email}
                           onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
-                          className={`pl-10 ${formErrors.email ? 'border-red-500' : ''}`}
+                          className={`pl-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.email ? 'border-destructive' : ''}`}
                           disabled={isLoading}
                         />
                       </div>
@@ -312,7 +312,7 @@ const AuthPage: React.FC = () => {
                           placeholder="Create a password"
                           value={signupForm.password}
                           onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
-                          className={`pl-10 pr-10 ${formErrors.password ? 'border-red-500' : ''}`}
+                          className={`pl-10 pr-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.password ? 'border-destructive' : ''}`}
                           disabled={isLoading}
                         />
                         <button
@@ -340,7 +340,7 @@ const AuthPage: React.FC = () => {
                           placeholder="Confirm your password"
                           value={signupForm.confirmPassword}
                           onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
-                          className={`pl-10 ${formErrors.confirmPassword ? 'border-red-500' : ''}`}
+                          className={`pl-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.confirmPassword ? 'border-destructive' : ''}`}
                           disabled={isLoading}
                         />
                       </div>
@@ -352,7 +352,7 @@ const AuthPage: React.FC = () => {
                   
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium h-11"
+                    className="w-full evtaar-gradient-primary btn-primary text-primary-foreground font-semibold h-11"
                     disabled={isLoading}
                   >
                     {isLoading ? (

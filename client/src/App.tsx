@@ -73,12 +73,12 @@ function AppRouter() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="videoconnect-theme">
+    <ThemeProvider defaultTheme="evtaar" storageKey="evtaar-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
             <Router>
-              <div className="relative h-full w-full bg-background overflow-hidden">
+              <div className="relative min-h-screen w-full bg-background">
                 {/* Main Application Routes */}
                 <AppRouter />
                 
