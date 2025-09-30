@@ -341,7 +341,7 @@ const RoomPage: React.FC = () => {
               variant="ghost" 
               size="sm"
               onClick={() => setShowParticipants(!showParticipants)}
-              className={showParticipants ? 'bg-accent' : ''}
+              className={showParticipants ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : ''}
               data-testid="button-participants"
             >
               <Users className="w-4 h-4" />
@@ -351,7 +351,7 @@ const RoomPage: React.FC = () => {
               variant="ghost" 
               size="sm"
               onClick={() => setShowChat(!showChat)}
-              className={showChat ? 'bg-accent' : ''}
+              className={showChat ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : ''}
               data-testid="button-chat"
             >
               <MessageSquare className="w-4 h-4" />
@@ -361,7 +361,7 @@ const RoomPage: React.FC = () => {
               variant="ghost" 
               size="sm"
               onClick={() => setShowFileShare(!showFileShare)}
-              className={showFileShare ? 'bg-accent' : ''}
+              className={showFileShare ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : ''}
               data-testid="button-file-share"
             >
               <Share2 className="w-4 h-4" />
