@@ -37,4 +37,35 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  optimizeDeps: {
+    // Force pre-bundling of these heavy dependencies
+    include: [
+      'react',
+      'react-dom',
+      'react-hook-form',
+      '@tanstack/react-query',
+      '@livekit/components-react',
+      'livekit-client',
+      'framer-motion',
+      'lucide-react',
+      'date-fns',
+      'socket.io-client',
+      'recharts',
+      // Pre-bundle all Radix UI components
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-tooltip',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-accordion',
+    ],
+    // Use esbuild for faster dependency pre-bundling
+    esbuildOptions: {
+      target: 'esnext',
+    },
+  },
+  // Improve caching
+  cacheDir: path.resolve(import.meta.dirname, 'node_modules/.vite'),
 });

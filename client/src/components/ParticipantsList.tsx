@@ -8,29 +8,52 @@ import {
   MicOff, 
   Video, 
   VideoOff, 
-  Crown, 
   MoreVertical,
   Volume2,
-  VolumeX 
+  Signal,
 } from "lucide-react";
 import { 
   useParticipants,
-  ParticipantLoop,
-  ParticipantName,
-  ParticipantAudioTile,
   useLocalParticipant,
-  ConnectionQualityIndicator,
 } from '@livekit/components-react';
-import { Participant } from 'livekit-client';
+import type { Participant, ConnectionQuality } from 'livekit-client';
 
 interface ParticipantsListProps {
   onClose: () => void;
 }
 
-// Enhanced participant tile component using LiveKit components
-function EnhancedParticipantTile({ participant }: { participant: Participant }) {
-  const { localParticipant } = useLocalParticipant();
-  const isLocal = participant.sid === localParticipant?.sid;
+// Helper function to get connection quality color
+function getConnectionQualityColor(quality: ConnectionQuality): string {
+  switch (quality) {
+    case 'excellent':
+      return 'text-green-600 dark:text-green-400';
+    case 'good':
+      return 'text-blue-600 dark:text-blue-400';
+    case 'poor':
+      return 'text-yellow-600 dark:text-yellow-400';
+    default:
+      return 'text-gray-600 dark:text-gray-400';
+  }
+}
+
+// Helper function to get connection quality label
+function getConnectionQualityLabel(quality: ConnectionQuality): string {
+  switch (quality) {
+    case 'excellent':
+      return 'Excellent';
+    case 'good':
+      return 'Good';
+    case 'poor':
+      return 'Poor';
+    case 'lost':
+      return 'Lost';
+    default:
+      return 'Unknown';
+  }
+}
+
+// Simplified participant tile that doesn't rely on participant-specific context
+function ParticipantTile({ participant, isLocal }: { participant: Participant; isLocal: boolean }) {
   
   const getInitials = (name: string) => {
     if (!name) return '??';
@@ -49,27 +72,27 @@ function EnhancedParticipantTile({ participant }: { participant: Participant }) 
   const displayName = participant.name || participant.identity || 'Unknown';
   const isAudioEnabled = participant.isMicrophoneEnabled;
   const isVideoEnabled = participant.isCameraEnabled;
-  const connectionQuality = participant.connectionQuality;
   const isSpeaking = participant.isSpeaking;
+  const connectionQuality = participant.connectionQuality || 'unknown';
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover-elevate" data-testid={`participant-${participant.sid}`}>
-      {/* Avatar with LiveKit Audio Tile */}
+    <div 
+      className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors" 
+      data-testid={`participant-${participant.sid}`}
+    >
+      {/* Avatar */}
       <div className="relative">
-        <Avatar className="w-10 h-10">
+        <Avatar className={`w-10 h-10 ${isSpeaking ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
           <AvatarFallback className="text-sm font-medium">
             {getInitials(displayName)}
           </AvatarFallback>
         </Avatar>
         
-        {/* Connection quality indicator */}
-        <div className="absolute -bottom-1 -right-1">
-          <ConnectionQualityIndicator className="w-3 h-3" />
-        </div>
-        
         {/* Speaking indicator */}
         {isSpeaking && (
-          <div className="absolute inset-0 rounded-full border-2 border-primary animate-pulse" />
+          <div className="absolute -top-1 -right-1">
+            <Volume2 className="w-4 h-4 text-primary animate-pulse" />
+          </div>
         )}
       </div>
 
@@ -79,51 +102,45 @@ function EnhancedParticipantTile({ participant }: { participant: Participant }) 
           <p className="font-medium truncate" data-testid={`participant-name-${participant.sid}`}>
             {displayName} {isLocal && '(You)'}
           </p>
-          {isSpeaking && (
-            <div className="flex items-center">
-              <Volume2 className="w-4 h-4 text-primary animate-pulse" />
-            </div>
-          )}
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Connected</span>
-          {connectionQuality && (
-            <Badge variant="outline" className="text-xs">
-              {connectionQuality}
-            </Badge>
+          <span className="text-xs">{participant.sid.slice(0, 8)}</span>
+          {connectionQuality && connectionQuality !== 'unknown' && (
+            <div className="flex items-center gap-1">
+              <Signal className={`w-3 h-3 ${getConnectionQualityColor(connectionQuality)}`} />
+              <Badge variant="outline" className="text-xs h-5">
+                {getConnectionQualityLabel(connectionQuality)}
+              </Badge>
+            </div>
           )}
         </div>
       </div>
 
       {/* Status Indicators */}
       <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-8 h-8"
-          onClick={() => handleParticipantAction('toggle-audio')}
-          data-testid={`button-audio-${participant.sid}`}
+        <div
+          className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-accent"
+          data-testid={`indicator-audio-${participant.sid}`}
+          title={isAudioEnabled ? 'Mic On' : 'Mic Off'}
         >
           {isAudioEnabled ? (
-            <Mic className="w-4 h-4 text-green-500" />
+            <Mic className="w-4 h-4 text-green-600 dark:text-green-400" />
           ) : (
-            <MicOff className="w-4 h-4 text-red-500" />
+            <MicOff className="w-4 h-4 text-red-600 dark:text-red-400" />
           )}
-        </Button>
+        </div>
         
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-8 h-8"
-          onClick={() => handleParticipantAction('toggle-video')}
-          data-testid={`button-video-${participant.sid}`}
+        <div
+          className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-accent"
+          data-testid={`indicator-video-${participant.sid}`}
+          title={isVideoEnabled ? 'Camera On' : 'Camera Off'}
         >
           {isVideoEnabled ? (
-            <Video className="w-4 h-4 text-green-500" />
+            <Video className="w-4 h-4 text-green-600 dark:text-green-400" />
           ) : (
-            <VideoOff className="w-4 h-4 text-red-500" />
+            <VideoOff className="w-4 h-4 text-red-600 dark:text-red-400" />
           )}
-        </Button>
+        </div>
         
         <Button
           variant="ghost"
@@ -140,8 +157,9 @@ function EnhancedParticipantTile({ participant }: { participant: Participant }) 
 }
 
 export default function ParticipantsList({ onClose }: ParticipantsListProps) {
-  // Get real participants from LiveKit
+  // Get all participants from LiveKit
   const participants = useParticipants();
+  const { localParticipant } = useLocalParticipant();
 
   return (
     <Card className="h-full flex flex-col border-0 rounded-none">
@@ -159,20 +177,29 @@ export default function ParticipantsList({ onClose }: ParticipantsListProps) {
         </Button>
       </CardHeader>
       
-      <CardContent className="flex-1 p-4">
+      <CardContent className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-3">
-          {/* Render each participant with their data */}
-          {participants.map((participant) => (
-            <EnhancedParticipantTile key={participant.sid} participant={participant} />
-          ))}
+          {participants.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <p>No participants yet</p>
+            </div>
+          ) : (
+            participants.map((participant) => (
+              <ParticipantTile 
+                key={participant.sid} 
+                participant={participant}
+                isLocal={participant.sid === localParticipant?.sid}
+              />
+            ))
+          )}
         </div>
 
         {/* Footer Stats */}
         <div className="mt-6 pt-4 border-t space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Online</span>
+            <span className="text-muted-foreground">Total Participants</span>
             <Badge variant="secondary">
-              {participants.filter(p => p.connectionQuality !== 'unknown').length}/{participants.length}
+              {participants.length}
             </Badge>
           </div>
           
@@ -187,6 +214,13 @@ export default function ParticipantsList({ onClose }: ParticipantsListProps) {
             <span className="text-muted-foreground">Video Active</span>
             <Badge variant="secondary">
               {participants.filter(p => p.isCameraEnabled).length}
+            </Badge>
+          </div>
+          
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Speaking</span>
+            <Badge variant="secondary">
+              {participants.filter(p => p.isSpeaking).length}
             </Badge>
           </div>
         </div>

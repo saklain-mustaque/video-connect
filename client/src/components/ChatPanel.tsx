@@ -274,8 +274,8 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
   const isOwnMessage = (msgUserId: string) => msgUserId === userId;
 
   return (
-    <Card className="h-full flex flex-col border-0 rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
+    <Card className="h-full flex flex-col border-0 rounded-none overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0">
         <CardTitle className="text-lg">Chat</CardTitle>
         <Button 
           variant="ghost" 
@@ -287,9 +287,9 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
         </Button>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col p-0">
+      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
+        <ScrollArea className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-4">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
@@ -356,7 +356,7 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
         </ScrollArea>
 
         {/* Message Input */}
-        <div className="p-4 border-t">
+        <div className="p-4 border-t flex-shrink-0">
           <form onSubmit={handleSendMessage} className="flex gap-2">
             <div className="flex items-center gap-2 flex-1">
               <Button 

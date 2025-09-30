@@ -425,7 +425,8 @@ const RoomPage: React.FC = () => {
               initial={{ opacity: 0, x: 300 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 300 }}
-              className="w-80 border-l bg-card/95 backdrop-blur-sm flex flex-col"
+              className="w-80 border-l bg-card/95 backdrop-blur-sm flex flex-col overflow-hidden"
+              style={{ height: 'calc(100vh - 80px)' }}
             >
               {showChat && (
                 <ChatPanel 

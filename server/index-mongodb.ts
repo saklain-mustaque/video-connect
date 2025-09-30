@@ -69,11 +69,19 @@ app.use((req, res, next) => {
     // this serves both the API and the client.
     // It is the only port that is not firewalled.
     const port = parseInt(process.env.PORT || '5000', 10);
-    server.listen({
+    
+    // reusePort is only supported on Linux/Unix, not Windows
+    const listenOptions: any = {
       port,
       host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
+    };
+    
+    // Only add reusePort on Linux/Unix systems
+    if (process.platform !== 'win32') {
+      listenOptions.reusePort = true;
+    }
+    
+    server.listen(listenOptions, () => {
       log(`🚀 Server running on port ${port}`);
       log(`📱 Video Conference App ready!`);
     });
