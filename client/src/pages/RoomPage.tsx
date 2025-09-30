@@ -16,7 +16,6 @@ import {
   Users, 
   Share2, 
   Settings,
-  PhoneOff,
   Minimize2,
   Maximize2,
   Copy,
@@ -147,11 +146,6 @@ const RoomPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleLeaveCall = () => {
-    console.log('Leave call triggered');
-    setLocation('/home');
   };
 
   const handleGoHome = () => {
@@ -291,6 +285,8 @@ const RoomPage: React.FC = () => {
         }}
         onDisconnected={() => {
           console.log('⚠️ LiveKitRoom disconnected');
+          // Navigate back to home when disconnected
+          setLocation('/home');
         }}
         onError={(error) => {
           console.error('❌ LiveKitRoom error:', error);
@@ -385,15 +381,7 @@ const RoomPage: React.FC = () => {
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </Button>
             
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={handleLeaveCall}
-              data-testid="button-leave-call"
-            >
-              <PhoneOff className="w-4 h-4 mr-2" />
-              Leave
-            </Button>
+            {/* Leave button removed - using LiveKit's built-in DisconnectButton in ControlBar */}
           </div>
         </motion.div>
 
