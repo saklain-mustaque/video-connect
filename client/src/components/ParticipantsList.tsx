@@ -2,15 +2,29 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 import { 
   X, 
   Mic, 
   MicOff, 
   Video, 
   VideoOff, 
-  MoreVertical,
   Volume2,
   Signal,
+  MoreVertical,
+  UserX,
+  Shield,
+  VolumeX,
+  Pin,
+  Copy,
+  MessageSquare
 } from "lucide-react";
 import { 
   useParticipants,
@@ -52,8 +66,13 @@ function getConnectionQualityLabel(quality: ConnectionQuality): string {
   }
 }
 
-// Simplified participant tile that doesn't rely on participant-specific context
-function ParticipantTile({ participant, isLocal }: { participant: Participant; isLocal: boolean }) {
+// Enhanced participant tile with working controls and more options
+function ParticipantTile({ participant, isLocal, localParticipant }: { 
+  participant: Participant; 
+  isLocal: boolean;
+  localParticipant?: any;
+}) {
+  const { toast } = useToast();
   
   const getInitials = (name: string) => {
     if (!name) return '??';
@@ -65,15 +84,111 @@ function ParticipantTile({ participant, isLocal }: { participant: Participant; i
       .slice(0, 2);
   };
 
-  const handleParticipantAction = (action: string) => {
-    console.log(`${action} triggered for participant:`, participant.identity);
-  };
-
   const displayName = participant.name || participant.identity || 'Unknown';
   const isAudioEnabled = participant.isMicrophoneEnabled;
   const isVideoEnabled = participant.isCameraEnabled;
   const isSpeaking = participant.isSpeaking;
   const connectionQuality = participant.connectionQuality || 'unknown';
+
+  // Handle microphone toggle (only for local participant)
+  const handleMicToggle = async () => {
+    if (!isLocal || !localParticipant) {
+      toast({
+        title: "Action Not Allowed",
+        description: "You can only control your own microphone",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const enabled = localParticipant.isMicrophoneEnabled;
+      await localParticipant.setMicrophoneEnabled(!enabled);
+      
+      toast({
+        title: enabled ? "Microphone Off" : "Microphone On",
+        description: enabled ? "Your microphone has been muted" : "Your microphone is now active",
+      });
+    } catch (error) {
+      console.error('Failed to toggle microphone:', error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle microphone",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle camera toggle (only for local participant)
+  const handleCameraToggle = async () => {
+    if (!isLocal || !localParticipant) {
+      toast({
+        title: "Action Not Allowed",
+        description: "You can only control your own camera",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const enabled = localParticipant.isCameraEnabled;
+      await localParticipant.setCameraEnabled(!enabled);
+      
+      toast({
+        title: enabled ? "Camera Off" : "Camera On",
+        description: enabled ? "Your camera has been turned off" : "Your camera is now active",
+      });
+    } catch (error) {
+      console.error('Failed to toggle camera:', error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle camera",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle more actions
+  const handleCopyParticipantId = () => {
+    navigator.clipboard.writeText(participant.identity).then(() => {
+      toast({
+        title: "Copied!",
+        description: "Participant ID copied to clipboard",
+      });
+    });
+  };
+
+  const handlePrivateMessage = () => {
+    // Placeholder for private messaging functionality
+    toast({
+      title: "Feature Coming Soon",
+      description: "Private messaging will be available in a future update",
+    });
+  };
+
+  const handlePinParticipant = () => {
+    // Placeholder for pinning participant (focusing their video)
+    toast({
+      title: "Feature Coming Soon",
+      description: "Pin participant will be available in a future update",
+    });
+  };
+
+  const handleMuteParticipant = () => {
+    if (isLocal) {
+      toast({
+        title: "Not Applicable",
+        description: "You cannot mute yourself from here. Use the microphone button instead.",
+      });
+      return;
+    }
+    
+    // This would require admin privileges in a real implementation
+    toast({
+      title: "Feature Coming Soon",
+      description: "Remote participant control will be available for room moderators",
+    });
+  };
 
   return (
     <div 
@@ -116,41 +231,123 @@ function ParticipantTile({ participant, isLocal }: { participant: Participant; i
         </div>
       </div>
 
-      {/* Status Indicators */}
+      {/* Status Indicators and Controls */}
       <div className="flex items-center gap-1">
-        <div
-          className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-accent"
-          data-testid={`indicator-audio-${participant.sid}`}
-          title={isAudioEnabled ? 'Mic On' : 'Mic Off'}
-        >
-          {isAudioEnabled ? (
-            <Mic className="w-4 h-4 text-green-600 dark:text-green-400" />
-          ) : (
-            <MicOff className="w-4 h-4 text-red-600 dark:text-red-400" />
-          )}
-        </div>
-        
-        <div
-          className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-accent"
-          data-testid={`indicator-video-${participant.sid}`}
-          title={isVideoEnabled ? 'Camera On' : 'Camera Off'}
-        >
-          {isVideoEnabled ? (
-            <Video className="w-4 h-4 text-green-600 dark:text-green-400" />
-          ) : (
-            <VideoOff className="w-4 h-4 text-red-600 dark:text-red-400" />
-          )}
-        </div>
-        
+        {/* Microphone Control */}
         <Button
           variant="ghost"
           size="icon"
-          className="w-8 h-8"
-          onClick={() => handleParticipantAction('more-options')}
-          data-testid={`button-more-${participant.sid}`}
+          className="w-8 h-8 hover:bg-accent/80 transition-colors"
+          onClick={handleMicToggle}
+          disabled={!isLocal}
+          data-testid={`control-audio-${participant.sid}`}
+          title={isLocal ? (isAudioEnabled ? 'Mute Microphone' : 'Unmute Microphone') : 'Microphone Status'}
         >
-          <MoreVertical className="w-4 h-4" />
+          {isAudioEnabled ? (
+           <Mic className={`w-4 h-4 ${
+              isLocal 
+                ? 'text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300' 
+                : 'text-green-600/60 dark:text-green-400/60'
+            }`} />
+          ) : (
+           <MicOff className={`w-4 h-4 ${
+              isLocal 
+                ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300' 
+                : 'text-red-600/60 dark:text-red-400/60'
+            }`} />
+          )}
         </Button>
+        
+        {/* Camera Control */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-8 h-8 hover:bg-accent/80 transition-colors"
+          onClick={handleCameraToggle}
+          disabled={!isLocal}
+          data-testid={`control-video-${participant.sid}`}
+          title={isLocal ? (isVideoEnabled ? 'Turn Off Camera' : 'Turn On Camera') : 'Camera Status'}
+        >
+          {isVideoEnabled ? (
+            <VideoOff className={`w-4 h-4 ${
+              isLocal 
+                ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300' 
+                : 'text-red-600/60 dark:text-red-400/60'
+            }`} />
+          ) : (
+            <VideoOff className={`w-4 h-4 ${
+              isLocal 
+                ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300' 
+                : 'text-red-600/60 dark:text-red-400/60'
+            }`} />
+          )}
+        </Button>
+        
+        {/* More Options Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-8 h-8 hover:bg-accent/80 transition-colors"
+              data-testid={`button-more-${participant.sid}`}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={handleCopyParticipantId}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copy Participant ID
+            </DropdownMenuItem>
+            
+            <DropdownMenuItem onClick={handlePinParticipant}>
+              <Pin className="mr-2 h-4 w-4" />
+              {isLocal ? 'Pin My Video' : 'Pin Participant'}
+            </DropdownMenuItem>
+            
+            <DropdownMenuItem onClick={handlePrivateMessage}>
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Private Message
+            </DropdownMenuItem>
+            
+            {!isLocal && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleMuteParticipant}
+                  className="text-orange-600 dark:text-orange-400"
+                >
+                  <VolumeX className="mr-2 h-4 w-4" />
+                  Mute Participant
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  className="text-red-600 dark:text-red-400"
+                  onClick={() => {
+                    toast({
+                      title: "Feature Coming Soon",
+                      description: "Participant removal will be available for room moderators",
+                    });
+                  }}
+                >
+                  <UserX className="mr-2 h-4 w-4" />
+                  Remove Participant
+                </DropdownMenuItem>
+              </>
+            )}
+            
+            {isLocal && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-blue-600 dark:text-blue-400">
+                  <Shield className="mr-2 h-4 w-4" />
+                  You (Host)
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -189,6 +386,7 @@ export default function ParticipantsList({ onClose }: ParticipantsListProps) {
                 key={participant.sid} 
                 participant={participant}
                 isLocal={participant.sid === localParticipant?.sid}
+                 localParticipant={localParticipant}
               />
             ))
           )}
