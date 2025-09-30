@@ -169,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes (some protected)
   app.post("/api/users", async (req, res) => {
     try {
-      const { username, displayName } = req.body;
+      const { username, displayName, password = 'temp_password' } = req.body;
       
       // Check if username already exists
       const existingUser = await mongoStorage.getUserByUsername(username);
@@ -178,7 +178,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      const user = await mongoStorage.createUser({ username, displayName });
+      // This route is for legacy compatibility - use a default password
+      const user = await mongoStorage.createUser({ 
+        username, 
+        displayName, 
+        password: password 
+      });
       res.json(user);
     } catch (error) {
       console.error('Create user error:', error);
@@ -485,11 +490,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat message routes
   app.post("/api/rooms/:roomId/messages", requireAuth, async (req, res) => {
     try {
-      const { content, type = 'text', userId, userName, fileName, fileSize, fileType } = req.body;
+      const { content, type = 'text', userName, fileName, fileSize, fileType } = req.body;
       const { roomId } = req.params;
+      const sessionUserId = (req.session as any).userId; // Get authenticated user ID from session
       
-      if (!content || !userId || !userName) {
-        res.status(400).json({ error: "Content, userId, and userName are required" });
+      if (!content || !userName) {
+        res.status(400).json({ error: "Content and userName are required" });
         return;
       }
       
@@ -500,10 +506,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Create message
+      // Create message using authenticated user's ID from session
       const message = await mongoStorage.createMessage(
         roomId,
-        userId,
+        sessionUserId, // Use session user ID instead of request body userId
         userName,
         content,
         type,

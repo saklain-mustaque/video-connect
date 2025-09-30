@@ -26,12 +26,12 @@ interface ChatPanelProps {
   roomId: string;
   userId: string;
   userName: string;
-  isOpen: boolean;
+  isOpen?: boolean; // Optional, defaults to true when component is rendered
   onClose: () => void;
   onNewMessage?: (count: number) => void;
 }
 
-export default function ChatPanel({ roomId, userId, userName, isOpen, onClose, onNewMessage }: ChatPanelProps) {
+export default function ChatPanel({ roomId, userId, userName, isOpen = true, onClose, onNewMessage }: ChatPanelProps) {
   const [message, setMessage] = useState("");
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -104,7 +104,9 @@ export default function ChatPanel({ roomId, userId, userName, isOpen, onClose, o
   useEffect(() => {
     const fetchRoomId = async () => {
       try {
-        const response = await fetch(`/api/rooms/by-code/${roomId}`);
+        const response = await fetch(`/api/rooms/by-code/${roomId}`, {
+          credentials: 'include', // Include session cookies
+        });
         if (response.ok) {
           const roomData = await response.json();
           setActualRoomId(roomData.id);
@@ -128,7 +130,9 @@ export default function ChatPanel({ roomId, userId, userName, isOpen, onClose, o
       setIsLoadingMessages(true);
       try {
         console.log(`🔄 Loading messages for room: ${actualRoomId}`);
-        const response = await fetch(`/api/rooms/${actualRoomId}/messages`);
+        const response = await fetch(`/api/rooms/${actualRoomId}/messages`, {
+          credentials: 'include', // Include session cookies
+        });
         
         if (response.ok) {
           const backendMessages = await response.json();
@@ -171,10 +175,10 @@ export default function ChatPanel({ roomId, userId, userName, isOpen, onClose, o
       const response = await fetch(`/api/rooms/${actualRoomId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include session cookies
         body: JSON.stringify({
           content: messageData.content,
           type: messageData.type,
-          userId: messageData.userId,
           userName: messageData.userName,
           fileName: messageData.fileName,
           fileSize: messageData.fileSize,
@@ -233,7 +237,6 @@ export default function ChatPanel({ roomId, userId, userName, isOpen, onClose, o
       persistMessageToBackend({
         content: newMessage.content,
         type: newMessage.type,
-        userId: newMessage.userId,
         userName: newMessage.userName,
       });
       
@@ -335,7 +338,6 @@ export default function ChatPanel({ roomId, userId, userName, isOpen, onClose, o
             persistMessageToBackend({
               content: file.name,
               type: isImage ? 'image' : 'file',
-              userId,
               userName,
               fileName: file.name,
               fileSize: file.size,
