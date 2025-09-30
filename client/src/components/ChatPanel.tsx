@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,23 +26,32 @@ interface ChatPanelProps {
   roomId: string;
   userId: string;
   userName: string;
+  isOpen: boolean;
   onClose: () => void;
+  onNewMessage?: (count: number) => void;
 }
 
-export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPanelProps) {
+export default function ChatPanel({ roomId, userId, userName, isOpen, onClose, onNewMessage }: ChatPanelProps) {
   const [message, setMessage] = useState("");
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const [actualRoomId, setActualRoomId] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   const room = useRoomContext();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastMessageCountRef = useRef(0);
   
-  // Use LiveKit data channel for real-time messaging
-  const { send: sendDataMessage } = useDataChannel('chat', (data) => {
+  // Handle incoming messages via LiveKit data channel
+  const handleIncomingMessage = useCallback((data: any) => {
     try {
       const messageData = JSON.parse(new TextDecoder().decode(data.payload));
+      
+      // Only process chat messages from other users
       if (messageData.type === 'chat' && messageData.userId !== userId) {
-        // Only add messages from other participants to avoid duplication
         const newMessage: Message = {
           id: messageData.id,
           userId: messageData.userId,
@@ -54,11 +63,24 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
           fileSize: messageData.fileSize,
           fileType: messageData.fileType,
         };
+        
         setMessages(prev => {
-          // Check if message already exists to prevent duplicates
+          // Check if message already exists
           const exists = prev.some(msg => msg.id === messageData.id);
           if (!exists) {
-            return [...prev, newMessage];
+            const newMessages = [...prev, newMessage];
+            
+            // If chat is not open, increment unread count
+            if (!isOpen) {
+              setUnreadCount(count => count + 1);
+            }
+            
+            // Notify parent component
+            if (onNewMessage) {
+              onNewMessage(newMessages.length);
+            }
+            
+            return newMessages;
           }
           return prev;
         });
@@ -66,32 +88,70 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
     } catch (error) {
       console.error('Failed to parse received message:', error);
     }
-  });
+  }, [userId, isOpen, onNewMessage]);
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Use LiveKit data channel for real-time messaging
+  const { send: sendDataMessage } = useDataChannel('chat', handleIncomingMessage);
   
-  // Load initial messages from backend when component mounts
+  // Reset unread count when chat is opened
   useEffect(() => {
-    const loadMessages = async () => {
+    if (isOpen) {
+      setUnreadCount(0);
+    }
+  }, [isOpen]);
+  
+  // Get actual room UUID from room code
+  useEffect(() => {
+    const fetchRoomId = async () => {
       try {
-        const response = await fetch(`/api/rooms/${roomId}/messages`);
+        const response = await fetch(`/api/rooms/by-code/${roomId}`);
         if (response.ok) {
-          const backendMessages = await response.json();
-          // Convert backend messages to frontend format with proper timestamp conversion
-          const convertedMessages = backendMessages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp), // Ensure timestamp is a Date object
-          }));
-          setMessages(convertedMessages);
+          const roomData = await response.json();
+          setActualRoomId(roomData.id);
+          console.log(`✅ Room code ${roomId} maps to UUID: ${roomData.id}`);
+        } else {
+          console.error('❌ Failed to fetch room data:', response.status);
         }
       } catch (error) {
-        console.error('Failed to load messages:', error);
+        console.error('❌ Failed to fetch room ID:', error);
+      }
+    };
+    
+    fetchRoomId();
+  }, [roomId]);
+
+  // Load messages from backend when actualRoomId is available
+  useEffect(() => {
+    if (!actualRoomId) return;
+    
+    const loadMessages = async () => {
+      setIsLoadingMessages(true);
+      try {
+        console.log(`🔄 Loading messages for room: ${actualRoomId}`);
+        const response = await fetch(`/api/rooms/${actualRoomId}/messages`);
+        
+        if (response.ok) {
+          const backendMessages = await response.json();
+          const convertedMessages = backendMessages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }));
+          
+          setMessages(convertedMessages);
+          lastMessageCountRef.current = convertedMessages.length;
+          console.log(`✅ Loaded ${convertedMessages.length} messages from backend`);
+        } else {
+          console.error('❌ Failed to load messages:', response.status);
+        }
+      } catch (error) {
+        console.error('❌ Failed to load messages:', error);
+      } finally {
+        setIsLoadingMessages(false);
       }
     };
     
     loadMessages();
-  }, [roomId]);
+  }, [actualRoomId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -101,12 +161,44 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
     scrollToBottom();
   }, [messages]);
 
+  const persistMessageToBackend = async (messageData: any) => {
+    if (!actualRoomId) {
+      console.error('❌ Cannot persist message: actualRoomId is null');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/rooms/${actualRoomId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: messageData.content,
+          type: messageData.type,
+          userId: messageData.userId,
+          userName: messageData.userName,
+          fileName: messageData.fileName,
+          fileSize: messageData.fileSize,
+          fileType: messageData.fileType,
+        }),
+      });
+      
+      if (response.ok) {
+        console.log('✅ Message persisted to backend');
+      } else {
+        console.error('❌ Failed to persist message to backend:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Failed to persist message to backend:', error);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || !sendDataMessage) return;
+    if (!message.trim() || !sendDataMessage || !actualRoomId) return;
 
+    const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: messageId,
       userId,
       userName,
       content: message.trim(),
@@ -114,13 +206,12 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
       timestamp: new Date(),
     };
 
-    // Add to local state immediately (local echo)
+    // Add message to local state immediately
     setMessages(prev => [...prev, newMessage]);
+    setMessage("");
     
-    setMessage(""); // Clear input immediately for better UX
-    
-    // Send via LiveKit data channel to all participants
     try {
+      // Prepare message data for LiveKit
       const messageData = {
         type: 'chat',
         id: newMessage.id,
@@ -131,29 +222,23 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
         timestamp: newMessage.timestamp.toISOString(),
       };
       
+      // Send via LiveKit data channel
       await sendDataMessage(new TextEncoder().encode(JSON.stringify(messageData)), {
         reliable: true,
       });
       
-      // Also persist to backend (async, don't block UI)
-      fetch(`/api/rooms/${roomId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: newMessage.content,
-          type: newMessage.type,
-          userId: newMessage.userId,
-          userName: newMessage.userName,
-        }),
-      }).catch(error => {
-        console.error('Failed to persist message to backend:', error);
-        // Could add a retry mechanism or show error notification here
+      console.log('✅ Message sent via LiveKit:', newMessage.content);
+      
+      // Persist to backend (don't await to keep UI responsive)
+      persistMessageToBackend({
+        content: newMessage.content,
+        type: newMessage.type,
+        userId: newMessage.userId,
+        userName: newMessage.userName,
       });
       
-      console.log('Message sent via LiveKit:', newMessage);
     } catch (error) {
-      console.error('Failed to send message via LiveKit:', error);
-      // Could show error notification to user here
+      console.error('❌ Failed to send message via LiveKit:', error);
     }
   };
 
@@ -180,14 +265,15 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
   };
 
   const handleFileUpload = async (files: File[]) => {
+    if (!actualRoomId || !sendDataMessage) return;
+    
     setIsUploading(true);
     
-    files.forEach(async (file) => {
-      const messageId = Date.now().toString() + Math.random();
+    for (const file of files) {
+      const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const fileType = file.type || 'application/octet-stream';
       const isImage = fileType.startsWith('image/');
       
-      // Add initial message with upload progress
       const uploadMessage: Message = {
         id: messageId,
         userId,
@@ -201,18 +287,20 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
         uploadProgress: 0,
       };
       
+      // Add upload message with progress
       setMessages(prev => [...prev, uploadMessage]);
       
-      // Simulate upload progress
+      // Simulate upload progress (replace with actual upload logic)
       let progress = 0;
       const interval = setInterval(async () => {
         progress += Math.random() * 20;
+        
         if (progress >= 100) {
           progress = 100;
           clearInterval(interval);
           setIsUploading(false);
           
-          // Update message to remove progress
+          // Remove progress indicator
           setMessages(prev => 
             prev.map(msg => 
               msg.id === messageId 
@@ -221,33 +309,42 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
             )
           );
           
-          // Send file message via LiveKit data channel
-          if (sendDataMessage) {
-            try {
-              const fileMessageData = {
-                type: 'chat',
-                id: messageId,
-                userId,
-                userName,
-                content: file.name,
-                messageType: isImage ? 'image' : 'file',
-                timestamp: new Date().toISOString(),
-                fileName: file.name,
-                fileSize: file.size,
-                fileType,
-              };
-              
-              await sendDataMessage(new TextEncoder().encode(JSON.stringify(fileMessageData)), {
-                reliable: true,
-              });
-              
-              console.log('File message sent via LiveKit:', file.name);
-            } catch (error) {
-              console.error('Failed to send file message:', error);
-            }
+          try {
+            // Prepare file message data
+            const fileMessageData = {
+              type: 'chat',
+              id: messageId,
+              userId,
+              userName,
+              content: file.name,
+              messageType: isImage ? 'image' : 'file',
+              timestamp: new Date().toISOString(),
+              fileName: file.name,
+              fileSize: file.size,
+              fileType,
+            };
+            
+            // Send via LiveKit
+            await sendDataMessage(new TextEncoder().encode(JSON.stringify(fileMessageData)), {
+              reliable: true,
+            });
+            
+            console.log('✅ File message sent via LiveKit:', file.name);
+            
+            // Persist to backend
+            persistMessageToBackend({
+              content: file.name,
+              type: isImage ? 'image' : 'file',
+              userId,
+              userName,
+              fileName: file.name,
+              fileSize: file.size,
+              fileType,
+            });
+            
+          } catch (error) {
+            console.error('❌ Failed to send file message:', error);
           }
-          
-          console.log('File uploaded:', file.name);
         }
         
         // Update progress
@@ -259,9 +356,9 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
           )
         );
       }, 200);
-    });
+    }
     
-    // Clear file input
+    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -276,7 +373,14 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
   return (
     <Card className="h-full flex flex-col border-0 rounded-none overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0">
-        <CardTitle className="text-lg">Chat</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-lg">Chat</CardTitle>
+          {unreadCount > 0 && (
+            <Badge variant="destructive" className="text-xs">
+              {unreadCount} new
+            </Badge>
+          )}
+        </div>
         <Button 
           variant="ghost" 
           size="icon"
@@ -288,10 +392,14 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
-        {/* Messages */}
         <ScrollArea className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-4">
-            {messages.length === 0 ? (
+            {isLoadingMessages ? (
+              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                <p className="text-sm">Loading messages...</p>
+              </div>
+            ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
                 <MessageSquare className="w-8 h-8 mb-2" />
                 <p className="text-sm">No messages yet</p>
@@ -313,19 +421,24 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
                         : 'bg-muted'
                     }`}>
                       {msg.type === 'text' ? (
-                        <p className="text-sm" data-testid={`message-${msg.id}`}>{msg.content}</p>
+                        <p className="text-sm break-words" data-testid={`message-${msg.id}`}>{msg.content}</p>
                       ) : (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             {React.createElement(getFileIcon(msg.fileType || ''), { className: "w-4 h-4" })}
-                            <div className="flex-1">
-                              <span className="text-sm font-medium">{msg.fileName || msg.content}</span>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium truncate block">{msg.fileName || msg.content}</span>
                               {msg.fileSize && (
                                 <p className="text-xs opacity-70">{formatFileSize(msg.fileSize)}</p>
                               )}
                             </div>
                             {msg.uploadProgress === undefined && (
-                              <Button variant="ghost" size="icon" className="w-6 h-6">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="w-6 h-6 flex-shrink-0"
+                                title="Download file"
+                              >
                                 <Download className="w-3 h-3" />
                               </Button>
                             )}
@@ -355,7 +468,6 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
           </div>
         </ScrollArea>
 
-        {/* Message Input */}
         <div className="p-4 border-t flex-shrink-0">
           <form onSubmit={handleSendMessage} className="flex gap-2">
             <div className="flex items-center gap-2 flex-1">
@@ -364,7 +476,7 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
                 variant="ghost" 
                 size="icon"
                 onClick={handleMediaUpload}
-                disabled={isUploading}
+                disabled={isUploading || !actualRoomId}
                 data-testid="button-media-upload"
                 title="Upload media"
               >
@@ -377,6 +489,7 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
                 onChange={(e) => setMessage(e.target.value)}
                 className="flex-1"
                 data-testid="input-chat-message"
+                disabled={!actualRoomId}
               />
             </div>
             <Button 
@@ -384,19 +497,19 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
               variant="ghost" 
               size="icon"
               data-testid="button-emoji"
+              disabled={!actualRoomId}
             >
               <Smile className="w-4 h-4" />
             </Button>
             <Button 
               type="submit" 
-              disabled={!message.trim()}
+              disabled={!message.trim() || !actualRoomId}
               data-testid="button-send-message"
             >
               <Send className="w-4 h-4" />
             </Button>
           </form>
           
-          {/* Hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -413,6 +526,11 @@ export default function ChatPanel({ roomId, userId, userName, onClose }: ChatPan
             <span className="text-xs text-muted-foreground">
               {messages.length} messages
             </span>
+            {!actualRoomId && (
+              <Badge variant="destructive" className="text-xs">
+                Connecting...
+              </Badge>
+            )}
           </div>
         </div>
       </CardContent>

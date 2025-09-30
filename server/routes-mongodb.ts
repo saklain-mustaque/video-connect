@@ -335,61 +335,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chat message routes
-  app.post("/api/rooms/:roomCode/messages", async (req, res) => {
+  app.post("/api/rooms/:roomId/messages", async (req, res) => {
     try {
-      const { content, type = 'text', userId, userName } = req.body;
-      const { roomCode } = req.params;
+      const { content, type = 'text', userId, userName, fileName, fileSize, fileType } = req.body;
+      const { roomId } = req.params;
       
       if (!content || !userId || !userName) {
         res.status(400).json({ error: "Content, userId, and userName are required" });
         return;
       }
       
-      // Get room by code
-      const room = await mongoStorage.getActiveRoomByCode(roomCode);
+      // Validate room exists
+      const room = await mongoStorage.getRoom(roomId);
       if (!room) {
         res.status(404).json({ error: "Room not found" });
         return;
       }
       
-      // Create message (note: we need to add this method to mongoStorage)
-      const messageData = {
-        roomId: room.id,
+      // Create message
+      const message = await mongoStorage.createMessage(
+        roomId,
         userId,
         userName,
         content,
         type,
-        timestamp: new Date()
-      };
+        fileName,
+        fileSize,
+        fileType
+      );
       
-      // For now, just return the message data
-      // TODO: Implement actual message storage in mongoStorage
-      res.json({
-        id: Date.now().toString(),
-        ...messageData
-      });
+      console.log('✅ Message saved to MongoDB:', message.id);
+      res.json(message);
     } catch (error) {
-      console.error('Send message error:', error);
+      console.error('❌ Send message error:', error);
       res.status(500).json({ error: "Failed to send message" });
     }
   });
   
-  app.get("/api/rooms/:roomCode/messages", async (req, res) => {
+  app.get("/api/rooms/:roomId/messages", async (req, res) => {
     try {
-      const { roomCode } = req.params;
+      const { roomId } = req.params;
       
-      // Get room by code
-      const room = await mongoStorage.getActiveRoomByCode(roomCode);
+      // Validate room exists
+      const room = await mongoStorage.getRoom(roomId);
       if (!room) {
         res.status(404).json({ error: "Room not found" });
         return;
       }
       
-      // For now, return empty array
-      // TODO: Implement actual message retrieval from mongoStorage
-      res.json([]);
+      // Get all messages for the room
+      const messages = await mongoStorage.getMessagesByRoom(roomId);
+      
+      console.log(`✅ Retrieved ${messages.length} messages for room ${roomId}`);
+      res.json(messages);
     } catch (error) {
-      console.error('Get messages error:', error);
+      console.error('❌ Get messages error:', error);
       res.status(500).json({ error: "Failed to get messages" });
     }
   });

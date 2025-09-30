@@ -32,6 +32,9 @@ export interface IMessage extends Document {
   userId: mongoose.Types.ObjectId;
   content: string;
   type: string;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
   timestamp: Date;
 }
 
@@ -118,8 +121,17 @@ const messageSchema = new Schema<IMessage>({
   },
   type: {
     type: String,
-    enum: ['text', 'file'],
+    enum: ['text', 'file', 'image'],
     default: 'text'
+  },
+  fileName: {
+    type: String
+  },
+  fileSize: {
+    type: Number
+  },
+  fileType: {
+    type: String
   },
   timestamp: {
     type: Date,
@@ -180,7 +192,11 @@ export type MessageType = {
   id: string;
   roomId: string;
   userId: string;
+  userName?: string;
   content: string;
   type: string;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
   timestamp: Date;
 };

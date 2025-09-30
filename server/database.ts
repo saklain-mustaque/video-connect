@@ -17,6 +17,65 @@ const sql = neon(process.env.DATABASE_URL as string);
 export const db = drizzle(sql);
 
 export class DatabaseStorage implements IStorage {
+  // Message management methods
+  async createMessage(
+    roomId: string, 
+    userId: string, 
+    userName: string, 
+    content: string, 
+    type: string = 'text',
+    fileName?: string,
+    fileSize?: number,
+    fileType?: string
+  ): Promise<any> {
+    const result = await db.insert(messages).values({
+      roomId,
+      userId,
+      content,
+      type,
+      fileName: fileName || null,
+      fileSize: fileSize ? fileSize.toString() : null,
+      fileType: fileType || null,
+    }).returning();
+    
+    // Return with userName for frontend
+    return {
+      ...result[0],
+      userName,
+      fileSize: result[0].fileSize ? parseInt(result[0].fileSize) : undefined,
+    };
+  }
+
+  async getMessagesByRoom(roomId: string): Promise<any[]> {
+    const result = await db.select({
+      id: messages.id,
+      roomId: messages.roomId,
+      userId: messages.userId,
+      content: messages.content,
+      type: messages.type,
+      fileName: messages.fileName,
+      fileSize: messages.fileSize,
+      fileType: messages.fileType,
+      timestamp: messages.timestamp,
+    }).from(messages)
+      .where(eq(messages.roomId, roomId))
+      .orderBy(messages.timestamp);
+    
+    // Fetch user info for each message
+    const messagesWithUsers = await Promise.all(
+      result.map(async (msg) => {
+        const user = await this.getUser(msg.userId!);
+        return {
+          ...msg,
+          userName: user?.displayName || 'Unknown User',
+          fileSize: msg.fileSize ? parseInt(msg.fileSize) : undefined,
+        };
+      })
+    );
+    
+    return messagesWithUsers;
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     try {
       const result = await db.select().from(users).where(eq(users.id, id));

@@ -285,4 +285,90 @@ export class MongoDBStorage implements IStorage {
       throw error;
     }
   }
+
+  // Message methods
+  async createMessage(
+    roomId: string,
+    userId: string,
+    userName: string,
+    content: string,
+    type: string = 'text',
+    fileName?: string,
+    fileSize?: number,
+    fileType?: string
+  ): Promise<any> {
+    try {
+      await this.ensureConnection();
+      
+      if (!mongoose.Types.ObjectId.isValid(roomId)) {
+        throw new Error('Invalid room ID');
+      }
+      
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        throw new Error('Invalid user ID');
+      }
+      
+      const message = new Message({
+        roomId: new mongoose.Types.ObjectId(roomId),
+        userId: new mongoose.Types.ObjectId(userId),
+        content,
+        type,
+        fileName: fileName || undefined,
+        fileSize: fileSize || undefined,
+        fileType: fileType || undefined,
+        timestamp: new Date()
+      });
+      
+      const savedMessage = await message.save();
+      
+      return {
+        id: savedMessage._id.toString(),
+        roomId: savedMessage.roomId.toString(),
+        userId: savedMessage.userId.toString(),
+        userName,
+        content: savedMessage.content,
+        type: savedMessage.type,
+        fileName: savedMessage.fileName,
+        fileSize: savedMessage.fileSize,
+        fileType: savedMessage.fileType,
+        timestamp: savedMessage.timestamp,
+      };
+    } catch (error) {
+      console.error('MongoDB error in createMessage:', error);
+      throw error;
+    }
+  }
+
+  async getMessagesByRoom(roomId: string): Promise<any[]> {
+    try {
+      await this.ensureConnection();
+      
+      if (!mongoose.Types.ObjectId.isValid(roomId)) {
+        return [];
+      }
+      
+      const messages = await Message.find({
+        roomId: new mongoose.Types.ObjectId(roomId)
+      })
+      .sort({ timestamp: 1 })
+      .populate('userId', 'displayName')
+      .exec();
+      
+      return messages.map(msg => ({
+        id: msg._id.toString(),
+        roomId: msg.roomId.toString(),
+        userId: msg.userId.toString(),
+        userName: (msg.userId as any)?.displayName || 'Unknown User',
+        content: msg.content,
+        type: msg.type,
+        fileName: msg.fileName,
+        fileSize: msg.fileSize,
+        fileType: msg.fileType,
+        timestamp: msg.timestamp,
+      }));
+    } catch (error) {
+      console.error('MongoDB error in getMessagesByRoom:', error);
+      throw error;
+    }
+  }
 }

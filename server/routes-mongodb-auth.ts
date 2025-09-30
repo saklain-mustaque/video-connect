@@ -482,6 +482,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chat message routes
+  app.post("/api/rooms/:roomId/messages", requireAuth, async (req, res) => {
+    try {
+      const { content, type = 'text', userId, userName, fileName, fileSize, fileType } = req.body;
+      const { roomId } = req.params;
+      
+      if (!content || !userId || !userName) {
+        res.status(400).json({ error: "Content, userId, and userName are required" });
+        return;
+      }
+      
+      // Validate room exists
+      const room = await mongoStorage.getRoom(roomId);
+      if (!room) {
+        res.status(404).json({ error: "Room not found" });
+        return;
+      }
+      
+      // Create message
+      const message = await mongoStorage.createMessage(
+        roomId,
+        userId,
+        userName,
+        content,
+        type,
+        fileName,
+        fileSize,
+        fileType
+      );
+      
+      console.log('✅ Message saved to MongoDB:', message.id);
+      res.json(message);
+    } catch (error) {
+      console.error('❌ Send message error:', error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+  
+  app.get("/api/rooms/:roomId/messages", requireAuth, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      
+      // Validate room exists
+      const room = await mongoStorage.getRoom(roomId);
+      if (!room) {
+        res.status(404).json({ error: "Room not found" });
+        return;
+      }
+      
+      // Get all messages for the room
+      const messages = await mongoStorage.getMessagesByRoom(roomId);
+      
+      console.log(`✅ Retrieved ${messages.length} messages for room ${roomId}`);
+      res.json(messages);
+    } catch (error) {
+      console.error('❌ Get messages error:', error);
+      res.status(500).json({ error: "Failed to get messages" });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
   return httpServer;

@@ -26,7 +26,10 @@ export const messages = pgTable("messages", {
   roomId: varchar("room_id").references(() => rooms.id),
   userId: varchar("user_id").references(() => users.id),
   content: text("content").notNull(),
-  type: text("type").notNull().default("text"), // text, file
+  type: text("type").notNull().default("text"), // text, file, image
+  fileName: text("file_name"),
+  fileSize: varchar("file_size"),
+  fileType: text("file_type"),
   timestamp: timestamp("timestamp").defaultNow(),
 });
 

@@ -207,15 +207,13 @@ const AuthPage: React.FC = () => {
                         className={`pl-10 pr-10 ${formErrors.password ? 'border-red-500' : ''}`}
                         disabled={isLoading}
                       />
-                      <Button
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </Button>
+                      </button>
                     </div>
                     {formErrors.password && (
                       <p className="text-sm text-red-500">{formErrors.password}</p>
@@ -317,15 +315,13 @@ const AuthPage: React.FC = () => {
                           className={`pl-10 pr-10 ${formErrors.password ? 'border-red-500' : ''}`}
                           disabled={isLoading}
                         />
-                        <Button
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </Button>
+                        </button>
                       </div>
                       {formErrors.password && (
                         <p className="text-sm text-red-500">{formErrors.password}</p>

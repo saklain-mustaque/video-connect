@@ -8,6 +8,17 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  createMessage(
+    roomId: string,
+    userId: string,
+    userName: string,
+    content: string,
+    type?: string,
+    fileName?: string,
+    fileSize?: number,
+    fileType?: string
+  ): Promise<any>;
+  getMessagesByRoom(roomId: string): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {

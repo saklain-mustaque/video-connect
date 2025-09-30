@@ -162,6 +162,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Message routes
+  app.get("/api/rooms/:roomId/messages", async (req, res) => {
+    try {
+      const messages = await dbStorage.getMessagesByRoom(req.params.roomId);
+      res.json(messages);
+    } catch (error) {
+      console.error('Get messages error:', error);
+      res.status(500).json({ error: "Failed to get messages" });
+    }
+  });
+
+  app.post("/api/rooms/:roomId/messages", async (req, res) => {
+    try {
+      const { content, type, userId, userName, fileName, fileSize, fileType } = req.body;
+      const { roomId } = req.params;
+      
+      if (!content || !userId || !userName) {
+        res.status(400).json({ error: "Missing required fields" });
+        return;
+      }
+      
+      const message = await dbStorage.createMessage(
+        roomId,
+        userId,
+        userName,
+        content,
+        type || 'text',
+        fileName,
+        fileSize,
+        fileType
+      );
+      
+      res.json(message);
+    } catch (error) {
+      console.error('Create message error:', error);
+      res.status(500).json({ error: "Failed to create message" });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
   return httpServer;
