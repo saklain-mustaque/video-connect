@@ -78,7 +78,7 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <Router>
-              <div className="relative min-h-screen bg-background">
+              <div className="relative h-full w-full bg-background overflow-hidden">
                 {/* Main Application Routes */}
                 <AppRouter />
                 

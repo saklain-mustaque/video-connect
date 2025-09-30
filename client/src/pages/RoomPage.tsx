@@ -386,14 +386,6 @@ const RoomPage: React.FC = () => {
             </Button>
             
             <Button 
-              variant="ghost" 
-              size="sm"
-              data-testid="button-settings"
-            >
-              <Settings className="w-4 h-4" />
-            </Button>
-            
-            <Button 
               variant="destructive" 
               size="sm"
               onClick={handleLeaveCall}
