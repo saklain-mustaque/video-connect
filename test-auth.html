@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Authentication Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.online {
+            background: #28a745;
+            color: white;
+        }
+        .status.offline {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Azure Authentication Test Suite</h1>
+        
+        <!-- Session Info -->
+        <div class="test-section">
+            <h2>Session & Cookie Information</h2>
+            <button onclick="checkCookies()">Check Cookies</button>
+            <div id="cookie-result"></div>
+        </div>
+
+        <!-- Authentication Tests -->
+        <div class="test-section">
+            <h2>1. Register New User</h2>
+            <input type="text" id="reg-username" placeholder="Username">
+            <input type="text" id="reg-displayname" placeholder="Display Name">
+            <input type="password" id="reg-password" placeholder="Password">
+            <input type="email" id="reg-email" placeholder="Email (optional)">
+            <button onclick="testRegister()">Register</button>
+            <div id="register-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Login</h2>
+            <input type="text" id="login-username" placeholder="Username">
+            <input type="password" id="login-password" placeholder="Password">
+            <button onclick="testLogin()">Login</button>
+            <div id="login-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Check Current Session</h2>
+            <button onclick="checkSession()">Check Session</button>
+            <div id="session-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Create Room (Requires Authentication)</h2>
+            <input type="text" id="room-name" placeholder="Room Name">
+            <button onclick="testCreateRoom()">Create Room</button>
+            <div id="room-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Logout</h2>
+            <button onclick="testLogout()">Logout</button>
+            <div id="logout-result"></div>
+        </div>
+
+        <!-- Full Test Suite -->
+        <div class="test-section">
+            <h2>🚀 Run Full Test Suite</h2>
+            <p>This will test the complete authentication flow</p>
+            <button onclick="runFullTest()" style="background: #28a745;">Run All Tests</button>
+            <div id="full-test-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.className = 'result ' + (isError ? 'error' : 'success');
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        function showInfo(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.className = 'result info';
+            element.textContent = message;
+        }
+
+        function checkCookies() {
+            const cookies = document.cookie;
+            const info = {
+                cookies: cookies || 'No cookies found',
+                sessionId: cookies.includes('sessionId') ? '✓ Session cookie found' : '✗ No session cookie',
+                domain: window.location.hostname,
+                protocol: window.location.protocol
+            };
+            showResult('cookie-result', info);
+        }
+
+        async function testRegister() {
+            const username = document.getElementById('reg-username').value;
+            const displayName = document.getElementById('reg-displayname').value;
+            const password = document.getElementById('reg-password').value;
+            const email = document.getElementById('reg-email').value;
+
+            if (!username || !displayName || !password) {
+                showResult('register-result', { error: 'Please fill in all required fields' }, true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, displayName, password, email })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('register-result', { success: true, user: data });
+                    checkCookies();
+                } else {
+                    showResult('register-result', data, true);
+                }
+            } catch (error) {
+                showResult('register-result', { error: error.message }, true);
+            }
+        }
+
+        async function testLogin() {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            if (!username || !password) {
+                showResult('login-result', { error: 'Please fill in username and password' }, true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('login-result', { success: true, user: data });
+                    checkCookies();
+                } else {
+                    showResult('login-result', data, true);
+                }
+            } catch (error) {
+                showResult('login-result', { error: error.message }, true);
+            }
+        }
+
+        async function checkSession() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/me`, {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('session-result', { 
+                        authenticated: true, 
+                        user: data,
+                        status: 'Session is valid ✓'
+                    });
+                } else {
+                    showResult('session-result', { 
+                        authenticated: false,
+                        error: data.error || 'Not authenticated',
+                        status: 'No active session ✗'
+                    }, true);
+                }
+            } catch (error) {
+                showResult('session-result', { error: error.message }, true);
+            }
+        }
+
+        async function testCreateRoom() {
+            const roomName = document.getElementById('room-name').value || 'Test Room';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/rooms`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ name: roomName })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('room-result', { 
+                        success: true, 
+                        room: data,
+                        message: 'Room created successfully! ✓'
+                    });
+                } else {
+                    showResult('room-result', data, true);
+                }
+            } catch (error) {
+                showResult('room-result', { error: error.message }, true);
+            }
+        }
+
+        async function testLogout() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('logout-result', { success: true, ...data });
+                    checkCookies();
+                } else {
+                    showResult('logout-result', data, true);
+                }
+            } catch (error) {
+                showResult('logout-result', { error: error.message }, true);
+            }
+        }
+
+        async function runFullTest() {
+            const resultDiv = document.getElementById('full-test-result');
+            showInfo('full-test-result', 'Running full test suite...\n\n');
+
+            const testUsername = 'testuser_' + Date.now();
+            const testPassword = 'testpass123';
+            const testDisplayName = 'Test User ' + Date.now();
+
+            let log = '';
+
+            // Test 1: Check initial session (should fail)
+            log += '1. Checking initial session (should be unauthenticated)...\n';
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' });
+                const data = await response.json();
+                log += response.ok ? '   ✗ FAIL: Should not be authenticated\n' : '   ✓ PASS: Not authenticated as expected\n';
+            } catch (error) {
+                log += `   ✗ ERROR: ${error.message}\n`;
+            }
+            log += '\n';
+
+            // Test 2: Register
+            log += `2. Registering new user (${testUsername})...\n`;
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                        username: testUsername, 
+                        displayName: testDisplayName, 
+                        password: testPassword 
+                    })
+                });
+                const data = await response.json();
+                log += response.ok ? '   ✓ PASS: User registered successfully\n' : `   ✗ FAIL: ${data.message}\n`;
+            } catch (error) {
+                log += `   ✗ ERROR: ${error.message}\n`;
+            }
+            log += '\n';
+
+            // Test 3: Check session after registration
+            log += '3. Checking session after registration...\n';
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' });
+                const data = await response.json();
+                log += response.ok ? `   ✓ PASS: Authenticated as ${data.username}\n` : '   ✗ FAIL: Should be authenticated after registration\n';
+            } catch (error) {
+                log += `   ✗ ERROR: ${error.message}\n`;
+            }
+            log += '\n';
+
+            // Test 4: Create room
+            log += '4. Creating a test room...\n';
+            try {
+                const response = await fetch(`${API_BASE}/api/rooms`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ name: 'Full Test Room' })
+                });
+                const data = await response.json();
+                log += response.ok ? `   ✓ PASS: Room created with code ${data.code}\n` : `   ✗ FAIL: ${data.error || data.message}\n`;
+            } catch (error) {
+                log += `   ✗ ERROR: ${error.message}\n`;
+            }
+            log += '\n';
+
+            // Test 5: Logout
+            log += '5. Logging out...\n';
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                log += response.ok ? '   ✓ PASS: Logged out successfully\n' : `   ✗ FAIL: ${data.message}\n`;
+            } catch (error) {
+                log += `   ✗ ERROR: ${error.message}\n`;
+            }
+            log += '\n';
+
+            // Test 6: Check session after logout
+            log += '6. Checking session after logout (should fail)...\n';
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' });
+                const data = await response.json();
+                log += response.ok ? '   ✗ FAIL: Should not be authenticated after logout\n' : '   ✓ PASS: Not authenticated as expected\n';
+            } catch (error) {
+                log += `   ✗ ERROR: ${error.message}\n`;
+            }
+            log += '\n';
+
+            // Test 7: Login with created user
+            log += `7. Logging in with created user (${testUsername})...\n`;
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ username: testUsername, password: testPassword })
+                });
+                const data = await response.json();
+                log += response.ok ? '   ✓ PASS: Login successful\n' : `   ✗ FAIL: ${data.message}\n`;
+            } catch (error) {
+                log += `   ✗ ERROR: ${error.message}\n`;
+            }
+            log += '\n';
+
+            log += '===== TEST SUITE COMPLETED =====\n\n';
+            log += 'Check the results above. All tests with ✓ PASS indicate proper functionality.\n';
+            log += 'If you see any ✗ FAIL markers, review the error messages and check:\n';
+            log += '  - Azure environment variables are set correctly\n';
+            log += '  - HTTPS is enabled\n';
+            log += '  - Cookies are being set (check browser DevTools)\n';
+            log += '  - Session configuration is correct\n';
+
+            resultDiv.className = 'result info';
+            resultDiv.textContent = log;
+        }
+
+        // Run cookie check on page load
+        window.onload = function() {
+            checkCookies();
+        };
+    </script>
+</body>
+</html>

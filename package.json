@@ -18,7 +18,8 @@
     "db:setup": "tsx server/simple-migrate.ts",
     "db:test": "tsx server/test-connection.ts",
     "mongodb:test": "tsx server/test-connection.ts",
-    "mongodb:test-full": "tsx server/test-mongodb-integration.ts"
+    "mongodb:test-full": "tsx server/test-mongodb-integration.ts",
+    "azure:check": "tsx server/check-azure-config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -1,9 +1,16 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes-mongodb";
+import { registerRoutes } from "./routes-mongodb-auth";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Trust proxy - required for Azure and other cloud platforms with HTTPS termination
+// This allows express-session to work correctly behind a reverse proxy
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

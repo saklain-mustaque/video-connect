@@ -13,22 +13,50 @@ const mongoStorage = new MongoDBStorage();
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'video-conference-secret-key',
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // Changed to true for better session creation
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // Requires HTTPS in production
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, // 'none' required for cross-site cookies with secure
+    domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN : undefined, // Allow setting domain for Azure
+  },
+  proxy: true, // Always trust proxy for better cloud compatibility
+  name: 'sessionId' // Use a custom session name
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware
   app.use(session(sessionConfig));
 
+  // Debug middleware for session (only in development)
+  if (process.env.NODE_ENV !== 'production') {
+    app.use((req: any, res: any, next: any) => {
+      console.log('Session Debug:', {
+        sessionID: req.sessionID,
+        session: req.session,
+        cookies: req.headers.cookie
+      });
+      next();
+    });
+  }
+
   // Authentication middleware
   const requireAuth = (req: any, res: any, next: any) => {
+    console.log('Auth Check:', {
+      hasSession: !!req.session,
+      userId: req.session?.userId,
+      sessionID: req.sessionID,
+      path: req.path
+    });
+    
     if (!req.session?.userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      console.error('Authentication failed: No userId in session');
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please log in to continue',
+        code: 'AUTH_REQUIRED'
+      });
     }
     next();
   };
