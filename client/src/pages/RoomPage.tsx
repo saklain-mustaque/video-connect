@@ -48,9 +48,12 @@ const RoomPage: React.FC = () => {
   const { toast } = useToast();
   
   const [roomData, setRoomData] = useState<RoomData | null>(null);
-  const [showChat, setShowChat] = useState(false);
-  const [showParticipants, setShowParticipants] = useState(false);
-  const [showFileShare, setShowFileShare] = useState(false);
+  // Only one panel can be open at a time
+  const [activePanel, setActivePanel] = useState<'chat' | 'participants' | 'fileShare' | null>(null);
+  
+  const showChat = activePanel === 'chat';
+  const showParticipants = activePanel === 'participants';
+  const showFileShare = activePanel === 'fileShare';
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -336,7 +339,7 @@ const RoomPage: React.FC = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => setShowParticipants(!showParticipants)}
+              onClick={() => setActivePanel(showParticipants ? null : 'participants')}
               className={showParticipants ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : ''}
               data-testid="button-participants"
             >
@@ -346,7 +349,7 @@ const RoomPage: React.FC = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => setShowChat(!showChat)}
+              onClick={() => setActivePanel(showChat ? null : 'chat')}
               className={showChat ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : ''}
               data-testid="button-chat"
             >
@@ -356,7 +359,7 @@ const RoomPage: React.FC = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => setShowFileShare(!showFileShare)}
+              onClick={() => setActivePanel(showFileShare ? null : 'fileShare')}
               className={showFileShare ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900' : ''}
               data-testid="button-file-share"
             >
@@ -413,18 +416,18 @@ const RoomPage: React.FC = () => {
                   roomId={roomCode || ''}
                   userId={user?.username || ''}
                   userName={user?.displayName || ''}
-                  onClose={() => setShowChat(false)}
+                  onClose={() => setActivePanel(null)}
                 />
               )}
               {showParticipants && (
                 <ParticipantsList 
-                  onClose={() => setShowParticipants(false)}
+                  onClose={() => setActivePanel(null)}
                 />
               )}
               {showFileShare && (
                 <FileShare 
                   roomId={roomCode || ''}
-                  onClose={() => setShowFileShare(false)}
+                  onClose={() => setActivePanel(null)}
                 />
               )}
             </motion.div>
