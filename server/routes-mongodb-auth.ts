@@ -23,11 +23,11 @@ const sessionConfig = {
     touchAfter: 24 * 3600, // Lazy session update
   }),
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Requires HTTPS in production
+    secure: false, // Set to false to work with HTTP and IP addresses
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, // 'none' required for cross-site cookies with secure
-    domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN : undefined, // Allow setting domain for Azure
+    sameSite: 'lax' as const, // Use 'lax' for better compatibility with IP access
+    // Don't set domain - let it auto-detect
   },
   proxy: true, // Always trust proxy for better cloud compatibility
   name: 'sessionId' // Use a custom session name
