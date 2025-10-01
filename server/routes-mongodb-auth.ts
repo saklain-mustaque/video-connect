@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
+import MongoStore from "connect-mongo";
 import { MongoDBStorage } from "./mongodb-storage";
 import { liveKitService } from "./livekit-service";
 import crypto from 'crypto';
@@ -9,11 +10,18 @@ import bcrypt from 'bcrypt';
 // Create an instance of MongoDBStorage
 const mongoStorage = new MongoDBStorage();
 
-// Session configuration
+// Session configuration with MongoDB store
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'video-conference-secret-key',
   resave: false,
   saveUninitialized: true, // Changed to true for better session creation
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI!,
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60, // 1 day in seconds
+    autoRemove: 'native', // Let MongoDB handle session cleanup
+    touchAfter: 24 * 3600, // Lazy session update
+  }),
   cookie: {
     secure: process.env.NODE_ENV === 'production', // Requires HTTPS in production
     httpOnly: true,
@@ -32,11 +40,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Debug middleware for session (only in development)
   if (process.env.NODE_ENV !== 'production') {
     app.use((req: any, res: any, next: any) => {
-      console.log('Session Debug:', {
-        sessionID: req.sessionID,
-        session: req.session,
-        cookies: req.headers.cookie
-      });
+      // console.log('Session Debug:', {
+      //   sessionID: req.sessionID,
+      //   session: req.session,
+      //   cookies: req.headers.cookie
+      // });
       next();
     });
   }

@@ -1,4 +1,15 @@
-import "dotenv/config";
+// Load environment variables first
+import dotenv from 'dotenv';
+const envResult = dotenv.config();
+
+// Log environment loading status
+if (envResult.error) {
+  console.error('⚠️  Error loading .env file:', envResult.error);
+  console.log('Using system environment variables instead');
+} else {
+  console.log(`✅ Loaded ${Object.keys(envResult.parsed || {}).length} environment variables from .env`);
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes-mongodb-auth"; // Updated to use MongoDB routes with auth
 import { setupVite, serveStatic, log } from "./vite";
