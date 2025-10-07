@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Video, User, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Video, User, Mail, Lock, AlertCircle, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const AuthPage: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -16,7 +17,6 @@ const AuthPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [showPassword, setShowPassword] = useState(false);
   
-  // Form states
   const [signinForm, setSigninForm] = useState({
     username: '',
     password: ''
@@ -118,40 +118,75 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background evtaar-gradient-bg evtaar-animated-bg flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background animated-gradient-bg flex items-center justify-center p-4">
+      {/* Theme Toggle - Top Right */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+      
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
-        <Card className="evtaar-card border-card-border">
-          <CardHeader className="text-center space-y-4 pb-8">
+        <Card className="modern-card border-card-border shadow-2xl">
+          <CardHeader className="text-center space-y-6 pb-8 pt-8">
+            {/* Logo */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mx-auto w-16 h-16 evtaar-gradient-primary rounded-2xl flex items-center justify-center evtaar-glow"
+              className="mx-auto relative"
             >
-              <Video className="w-8 h-8 text-primary-foreground" />
+              <div className="w-20 h-20 gradient-primary rounded-2xl flex items-center justify-center shadow-lg">
+                <Video className="w-10 h-10 text-white" />
+              </div>
+              <motion.div
+                className="absolute inset-0 gradient-primary rounded-2xl blur-xl opacity-50"
+                animate={{
+                  opacity: [0.3, 0.6, 0.3],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
             </motion.div>
+            
+            {/* Title */}
             <div>
-              <CardTitle className="text-3xl font-bold evtaar-text-gradient">
-                VideoConnect
+              <CardTitle className="text-3xl font-bold mb-2">
+                <span className="text-gradient-primary">Video</span>
+                <span className="text-foreground">Connect</span>
               </CardTitle>
-              <CardDescription className="text-base mt-2 text-muted-foreground">
-                Connect, collaborate, and create together
+              <CardDescription className="text-base text-muted-foreground flex items-center justify-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Professional video meetings
               </CardDescription>
             </div>
           </CardHeader>
           
-          <CardContent className="pb-8">
+          <CardContent className="pb-8 px-6">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-8">
-                <TabsTrigger value="signin" className="text-sm font-medium">
+              <TabsList className="grid w-full grid-cols-2 mb-8 h-12 p-1 bg-muted/50">
+                <TabsTrigger 
+                  value="signin" 
+                  className="text-sm font-semibold rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
                   Sign In
                 </TabsTrigger>
-                <TabsTrigger value="signup" className="text-sm font-medium">
+                <TabsTrigger 
+                  value="signup" 
+                  className="text-sm font-semibold rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
                   Sign Up
                 </TabsTrigger>
               </TabsList>
@@ -162,67 +197,68 @@ const AuthPage: React.FC = () => {
                   animate={{ opacity: 1, height: 'auto' }}
                   className="mb-6"
                 >
-                  <Alert variant="destructive">
+                  <Alert variant="destructive" className="border-destructive/50">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 </motion.div>
               )}
               
+              {/* Sign In Tab */}
               <TabsContent value="signin">
-                <form onSubmit={handleSignin} className="space-y-6">
+                <form onSubmit={handleSignin} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-username" className="text-sm font-medium">
+                    <Label htmlFor="signin-username" className="text-sm font-semibold">
                       Username
                     </Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                       <Input
                         id="signin-username"
                         type="text"
                         placeholder="Enter your username"
                         value={signinForm.username}
                         onChange={(e) => setSigninForm({ ...signinForm, username: e.target.value })}
-                        className={`pl-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.username ? 'border-destructive' : ''}`}
+                        className={`pl-10 h-11 bg-background/50 border-border/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 input-modern ${formErrors.username ? 'border-destructive focus:border-destructive focus:ring-destructive/10' : ''}`}
                         disabled={isLoading}
                       />
                     </div>
                     {formErrors.username && (
-                      <p className="text-sm text-red-500">{formErrors.username}</p>
+                      <p className="text-sm text-destructive">{formErrors.username}</p>
                     )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password" className="text-sm font-medium">
+                    <Label htmlFor="signin-password" className="text-sm font-semibold">
                       Password
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                       <Input
                         id="signin-password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Enter your password"
                         value={signinForm.password}
                         onChange={(e) => setSigninForm({ ...signinForm, password: e.target.value })}
-                        className={`pl-10 pr-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.password ? 'border-destructive' : ''}`}
+                        className={`pl-10 pr-10 h-11 bg-background/50 border-border/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 input-modern ${formErrors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/10' : ''}`}
                         disabled={isLoading}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                     {formErrors.password && (
-                      <p className="text-sm text-red-500">{formErrors.password}</p>
+                      <p className="text-sm text-destructive">{formErrors.password}</p>
                     )}
                   </div>
                   
                   <Button
                     type="submit"
-                    className="w-full evtaar-gradient-primary btn-primary text-primary-foreground font-semibold h-11"
+                    className="w-full h-11 btn-primary text-primary-foreground font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -237,122 +273,121 @@ const AuthPage: React.FC = () => {
                 </form>
               </TabsContent>
               
+              {/* Sign Up Tab */}
               <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-5">
-                  <div className="grid grid-cols-1 gap-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-username" className="text-sm font-medium">
-                        Username
-                      </Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <Input
-                          id="signup-username"
-                          type="text"
-                          placeholder="Choose a username"
-                          value={signupForm.username}
-                          onChange={(e) => setSignupForm({ ...signupForm, username: e.target.value })}
-                          className={`pl-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.username ? 'border-destructive' : ''}`}
-                          disabled={isLoading}
-                        />
-                      </div>
-                      {formErrors.username && (
-                        <p className="text-sm text-red-500">{formErrors.username}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-displayName" className="text-sm font-medium">
-                        Display Name
-                      </Label>
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-username" className="text-sm font-semibold">
+                      Username
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                       <Input
-                        id="signup-displayName"
+                        id="signup-username"
                         type="text"
-                        placeholder="How others will see you"
-                        value={signupForm.displayName}
-                        onChange={(e) => setSignupForm({ ...signupForm, displayName: e.target.value })}
-                        className={`bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.displayName ? 'border-destructive' : ''}`}
+                        placeholder="Choose a username"
+                        value={signupForm.username}
+                        onChange={(e) => setSignupForm({ ...signupForm, username: e.target.value })}
+                        className={`pl-10 h-11 bg-background/50 border-border/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 input-modern ${formErrors.username ? 'border-destructive focus:border-destructive focus:ring-destructive/10' : ''}`}
                         disabled={isLoading}
                       />
-                      {formErrors.displayName && (
-                        <p className="text-sm text-red-500">{formErrors.displayName}</p>
-                      )}
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email" className="text-sm font-medium">
-                        Email <span className="text-gray-400">(Optional)</span>
-                      </Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <Input
-                          id="signup-email"
-                          type="email"
-                          placeholder="your@email.com"
-                          value={signupForm.email}
-                          onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
-                          className={`pl-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.email ? 'border-destructive' : ''}`}
-                          disabled={isLoading}
-                        />
-                      </div>
-                      {formErrors.email && (
-                        <p className="text-sm text-red-500">{formErrors.email}</p>
-                      )}
+                    {formErrors.username && (
+                      <p className="text-sm text-destructive">{formErrors.username}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-displayName" className="text-sm font-semibold">
+                      Display Name
+                    </Label>
+                    <Input
+                      id="signup-displayName"
+                      type="text"
+                      placeholder="How others will see you"
+                      value={signupForm.displayName}
+                      onChange={(e) => setSignupForm({ ...signupForm, displayName: e.target.value })}
+                      className={`h-11 bg-background/50 border-border/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 input-modern ${formErrors.displayName ? 'border-destructive focus:border-destructive focus:ring-destructive/10' : ''}`}
+                      disabled={isLoading}
+                    />
+                    {formErrors.displayName && (
+                      <p className="text-sm text-destructive">{formErrors.displayName}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email" className="text-sm font-semibold">
+                      Email <span className="text-muted-foreground font-normal">(Optional)</span>
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={signupForm.email}
+                        onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
+                        className={`pl-10 h-11 bg-background/50 border-border/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 input-modern ${formErrors.email ? 'border-destructive focus:border-destructive focus:ring-destructive/10' : ''}`}
+                        disabled={isLoading}
+                      />
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password" className="text-sm font-medium">
-                        Password
-                      </Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <Input
-                          id="signup-password"
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="Create a password"
-                          value={signupForm.password}
-                          onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
-                          className={`pl-10 pr-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.password ? 'border-destructive' : ''}`}
-                          disabled={isLoading}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      {formErrors.password && (
-                        <p className="text-sm text-red-500">{formErrors.password}</p>
-                      )}
+                    {formErrors.email && (
+                      <p className="text-sm text-destructive">{formErrors.email}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password" className="text-sm font-semibold">
+                      Password
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        id="signup-password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Create a password (min. 6 characters)"
+                        value={signupForm.password}
+                        onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
+                        className={`pl-10 pr-10 h-11 bg-background/50 border-border/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 input-modern ${formErrors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/10' : ''}`}
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-confirmPassword" className="text-sm font-medium">
-                        Confirm Password
-                      </Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <Input
-                          id="signup-confirmPassword"
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="Confirm your password"
-                          value={signupForm.confirmPassword}
-                          onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
-                          className={`pl-10 bg-input border-border focus:border-primary focus:ring-primary/20 ${formErrors.confirmPassword ? 'border-destructive' : ''}`}
-                          disabled={isLoading}
-                        />
-                      </div>
-                      {formErrors.confirmPassword && (
-                        <p className="text-sm text-red-500">{formErrors.confirmPassword}</p>
-                      )}
+                    {formErrors.password && (
+                      <p className="text-sm text-destructive">{formErrors.password}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirmPassword" className="text-sm font-semibold">
+                      Confirm Password
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        id="signup-confirmPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Confirm your password"
+                        value={signupForm.confirmPassword}
+                        onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
+                        className={`pl-10 h-11 bg-background/50 border-border/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 input-modern ${formErrors.confirmPassword ? 'border-destructive focus:border-destructive focus:ring-destructive/10' : ''}`}
+                        disabled={isLoading}
+                      />
                     </div>
+                    {formErrors.confirmPassword && (
+                      <p className="text-sm text-destructive">{formErrors.confirmPassword}</p>
+                    )}
                   </div>
                   
                   <Button
                     type="submit"
-                    className="w-full evtaar-gradient-primary btn-primary text-primary-foreground font-semibold h-11"
+                    className="w-full h-11 btn-primary text-primary-foreground font-semibold shadow-lg hover:shadow-xl transition-all duration-200 mt-6"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -369,6 +404,16 @@ const AuthPage: React.FC = () => {
             </Tabs>
           </CardContent>
         </Card>
+        
+        {/* Footer text */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-center text-sm text-muted-foreground mt-6"
+        >
+          By continuing, you agree to our Terms of Service and Privacy Policy
+        </motion.p>
       </motion.div>
     </div>
   );

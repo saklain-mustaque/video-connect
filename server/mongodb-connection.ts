@@ -69,6 +69,12 @@ mongoose.connection.on('disconnected', () => {
   console.log('🔌 Mongoose disconnected from MongoDB');
 });
 
+// Get native MongoDB client for direct database operations
+export async function getMongoClient() {
+  const connection = await connectDB();
+  return connection.connection.getClient();
+}
+
 // Handle application termination
 process.on('SIGINT', async () => {
   if (cached.conn) {

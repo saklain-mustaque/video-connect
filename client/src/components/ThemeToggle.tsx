@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Moon, Sun, Monitor, Palette } from "lucide-react";
+import { Moon, Sun, Monitor, Briefcase, Sparkles, Palette } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 
 export default function ThemeToggle() {
@@ -18,12 +18,14 @@ export default function ThemeToggle() {
           variant="ghost"
           size="icon"
           data-testid="button-theme-toggle"
-          title="Toggle theme (Light, Dark, Evtaar, System)"
+          title="Toggle theme (Light, Dark, Professional, System)"
           className="text-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20"
         >
           <Sun className="theme-icon-sun h-[1.2rem] w-[1.2rem] transition-all" />
           <Moon className="theme-icon-moon absolute h-[1.2rem] w-[1.2rem] transition-all" />
-          <Palette className="theme-icon-evtaar absolute h-[1.2rem] w-[1.2rem] transition-all" />
+          <Briefcase className="theme-icon-professional absolute h-[1.2rem] w-[1.2rem] transition-all" />
+          <Sparkles className="theme-icon-teal-emerald absolute h-[1.2rem] w-[1.2rem] transition-all" />
+          <Palette className="theme-icon-slate-indigo absolute h-[1.2rem] w-[1.2rem] transition-all"/>
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
@@ -43,11 +45,25 @@ export default function ThemeToggle() {
           <span>Dark</span>
         </DropdownMenuItem>
         <DropdownMenuItem 
-          onClick={() => setTheme("evtaar")} 
+          onClick={() => setTheme("professional")} 
+          className="text-popover-foreground hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary font-medium cursor-pointer"
+        >
+          <Briefcase className="mr-2 h-4 w-4" />
+          <span>Professional</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => setTheme("teal-emerald")} 
+          className="text-popover-foreground hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary font-medium cursor-pointer"
+        >
+          <Sparkles className="mr-2 h-4 w-4" />
+          <span>Teal Emerald</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => setTheme("slate-indigo")} 
           className="text-popover-foreground hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary font-medium cursor-pointer"
         >
           <Palette className="mr-2 h-4 w-4" />
-          <span>Evtaar Theme</span>
+          <span>Slate Indigo</span>
         </DropdownMenuItem>
         <DropdownMenuItem 
           onClick={() => setTheme("system")} 

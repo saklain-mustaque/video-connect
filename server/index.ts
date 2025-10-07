@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes-mongodb-auth";
 import { setupVite, serveStatic, log } from "./vite";
+import { recordingCleanupService } from "./recording-cleanup-service";
 
 const app = express();
 
@@ -83,5 +84,25 @@ app.use((req, res, next) => {
   
   server.listen(listenOptions, () => {
     log(`serving on port ${port}`);
+    
+    // Start the recording cleanup service
+    recordingCleanupService.start();
+  });
+  
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    log('SIGTERM signal received: closing HTTP server');
+    recordingCleanupService.stop();
+    server.close(() => {
+      log('HTTP server closed');
+    });
+  });
+  
+  process.on('SIGINT', () => {
+    log('SIGINT signal received: closing HTTP server');
+    recordingCleanupService.stop();
+    server.close(() => {
+      log('HTTP server closed');
+    });
   });
 })();

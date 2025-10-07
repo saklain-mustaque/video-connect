@@ -22,7 +22,6 @@ import {
   PhoneOff,
   Minimize2,
   Maximize2,
-  UserRoundIcon
 } from "lucide-react";
 import ChatPanel from "./ChatPanel";
 import ParticipantsList from "./ParticipantsList";

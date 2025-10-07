@@ -4,8 +4,12 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 import { MongoDBStorage } from "./mongodb-storage";
 import { liveKitService } from "./livekit-service";
+import { recordingStorage } from "./recording-storage";
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
 
 // Create an instance of MongoDBStorage
 const mongoStorage = new MongoDBStorage();
@@ -51,12 +55,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Authentication middleware
   const requireAuth = (req: any, res: any, next: any) => {
-    console.log('Auth Check:', {
-      hasSession: !!req.session,
-      userId: req.session?.userId,
-      sessionID: req.sessionID,
-      path: req.path
-    });
+    // console.log('Auth Check:', {
+    //   hasSession: !!req.session,
+    //   userId: req.session?.userId,
+    //   sessionID: req.sessionID,
+    //   path: req.path
+    // });
     
     if (!req.session?.userId) {
       console.error('Authentication failed: No userId in session');
@@ -520,6 +524,438 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('LiveKit config check error:', error);
       res.status(500).json({ error: "Failed to validate LiveKit configuration" });
+    }
+  });
+
+  // Recording routes
+  
+  // Configure multer for file uploads
+  const upload = multer({
+    dest: 'uploads/',
+    limits: {
+      fileSize: 1024 * 1024 * 1024 // 1GB limit
+    }
+  });
+
+  // Start recording
+  app.post("/api/recordings/start", requireAuth, async (req, res) => {
+    try {
+      const { roomId, roomCode, roomName } = req.body;
+      const userId = (req.session as any).userId;
+
+      if (!roomId || !roomCode || !roomName) {
+        return res.status(400).json({ 
+          error: "Missing required fields: roomId, roomCode, and roomName are required" 
+        });
+      }
+
+      // Get user info
+      const user = await mongoStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if there's already an active recording for this room
+      const activeRecording = await recordingStorage.getActiveRecording(roomId);
+      if (activeRecording) {
+        // Check if the recording is stale (older than 5 minutes without completion)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        if (activeRecording.startTime < fiveMinutesAgo && !activeRecording.endTime) {
+          // Mark stale recording as failed and allow new recording
+          console.log('⚠️ Found stale recording, marking as failed:', activeRecording.id);
+          await recordingStorage.updateRecording(activeRecording.id, {
+            status: 'failed',
+            error: 'Recording abandoned',
+            endTime: new Date()
+          });
+        } else {
+          return res.status(409).json({ 
+            error: "A recording is already in progress for this room. Please stop the current recording first.",
+            recordingId: activeRecording.id
+          });
+        }
+      }
+
+      // Create recording entry with temporary local file path
+      const tempFilePath = path.join('uploads', `recording-${Date.now()}.webm`);
+      const recording = await recordingStorage.createRecording(
+        roomId,
+        roomCode,
+        roomName,
+        userId,
+        user.displayName,
+        tempFilePath
+      );
+
+      console.log('✅ Recording started:', recording.id);
+      res.json({
+        recordingId: recording.id,
+        status: 'recording',
+        startTime: recording.startTime
+      });
+    } catch (error) {
+      console.error('❌ Start recording error:', error);
+      res.status(500).json({ error: "Failed to start recording" });
+    }
+  });
+
+  // Stop recording
+  app.post("/api/recordings/:id/stop", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { duration } = req.body;
+
+      const recording = await recordingStorage.getRecording(id);
+      if (!recording) {
+        return res.status(404).json({ error: "Recording not found" });
+      }
+
+      // Update recording with end time and duration
+      await recordingStorage.updateRecording(id, {
+        endTime: new Date(),
+        duration: duration || 0,
+        status: 'processing'
+      });
+
+      console.log('✅ Recording stopped:', id);
+      res.json({
+        recordingId: id,
+        status: 'processing',
+        message: 'Recording stopped, ready for upload'
+      });
+    } catch (error) {
+      console.error('❌ Stop recording error:', error);
+      res.status(500).json({ error: "Failed to stop recording" });
+    }
+  });
+
+  // Upload recording
+  app.post("/api/recordings/:id/upload", requireAuth, upload.single('video'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = (req.session as any).userId;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No video file provided" });
+      }
+
+      const recording = await recordingStorage.getRecording(id);
+      if (!recording) {
+        // Clean up uploaded file
+        await fs.unlink(req.file.path).catch(() => {});
+        return res.status(404).json({ error: "Recording not found" });
+      }
+
+      // Verify the user owns this recording
+      if (recording.userId !== userId) {
+        await fs.unlink(req.file.path).catch(() => {});
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // For now, just move the file to a permanent location
+      // In production, you would upload to Azure Blob Storage or AWS S3
+      const recordingsDir = path.join(process.cwd(), 'recordings');
+      await fs.mkdir(recordingsDir, { recursive: true });
+      
+      const filename = `${id}-${Date.now()}.webm`;
+      const finalPath = path.join(recordingsDir, filename);
+      
+      await fs.rename(req.file.path, finalPath);
+
+      // Update recording with file information
+      await recordingStorage.updateRecording(id, {
+        localFilePath: finalPath,
+        fileSize: req.file.size,
+        status: 'completed'
+      });
+
+      console.log('✅ Recording uploaded:', id);
+      res.json({
+        recordingId: id,
+        status: 'completed',
+        fileSize: req.file.size,
+        message: 'Recording uploaded successfully'
+      });
+    } catch (error) {
+      console.error('❌ Upload recording error:', error);
+      // Clean up file on error
+      if (req.file) {
+        await fs.unlink(req.file.path).catch(() => {});
+      }
+      res.status(500).json({ error: "Failed to upload recording" });
+    }
+  });
+
+  // Get recordings for a room
+  app.get("/api/recordings/room/:roomId", requireAuth, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const recordings = await recordingStorage.getRecordingsByRoom(roomId);
+      res.json(recordings);
+    } catch (error) {
+      console.error('❌ Get room recordings error:', error);
+      res.status(500).json({ error: "Failed to get recordings" });
+    }
+  });
+
+  // Get user's recordings (includes recordings where user is creator or participant)
+  app.get("/api/recordings", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const recordings = await recordingStorage.getRecordingsForUser(userId);
+      res.json(recordings);
+    } catch (error) {
+      console.error('❌ Get user recordings error:', error);
+      res.status(500).json({ error: "Failed to get recordings" });
+    }
+  });
+
+  // Get user's recordings (legacy endpoint)
+  app.get("/api/recordings/user", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const recordings = await recordingStorage.getRecordingsForUser(userId);
+      res.json(recordings);
+    } catch (error) {
+      console.error('❌ Get user recordings error:', error);
+      res.status(500).json({ error: "Failed to get recordings" });
+    }
+  });
+
+  // Get specific recording
+  app.get("/api/recordings/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = (req.session as any).userId;
+      const recording = await recordingStorage.getRecording(id);
+      
+      if (!recording) {
+        return res.status(404).json({ error: "Recording not found" });
+      }
+
+      // Check if user has access (creator or participant)
+      const hasAccess = recording.userId === userId || 
+                        (recording.participants && recording.participants.includes(userId));
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Unauthorized to access this recording" });
+      }
+
+      res.json(recording);
+    } catch (error) {
+      console.error('❌ Get recording error:', error);
+      res.status(500).json({ error: "Failed to get recording" });
+    }
+  });
+
+  // Get download URL for a recording
+  app.get("/api/recordings/:id/download", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = (req.session as any).userId;
+      const recording = await recordingStorage.getRecording(id);
+      
+      if (!recording) {
+        return res.status(404).json({ error: "Recording not found" });
+      }
+
+      // Check if user has access (creator or participant)
+      const hasAccess = recording.userId === userId || 
+                        (recording.participants && recording.participants.includes(userId));
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Unauthorized to download this recording" });
+      }
+
+      if (!recording.localFilePath || !recording.status || recording.status !== 'completed') {
+        return res.status(404).json({ error: "Recording file not available" });
+      }
+
+      // For local storage, return the stream URL for playback
+      // In production with Azure Blob Storage, you would generate a SAS URL here
+      const downloadUrl = `/api/recordings/${id}/stream`;
+
+      res.json({
+        recordingId: id,
+        downloadUrl,
+        expiresIn: 3600, // 1 hour
+        message: 'Download URL generated successfully'
+      });
+    } catch (error) {
+      console.error('❌ Generate download URL error:', error);
+      res.status(500).json({ error: "Failed to generate download URL" });
+    }
+  });
+
+  // Stream recording file for playback (supports range requests)
+  app.get("/api/recordings/:id/stream", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = (req.session as any).userId;
+      const recording = await recordingStorage.getRecording(id);
+      
+      if (!recording) {
+        return res.status(404).json({ error: "Recording not found" });
+      }
+
+      // Check if user has access (creator or participant)
+      const hasAccess = recording.userId === userId || 
+                        (recording.participants && recording.participants.includes(userId));
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Unauthorized to access this recording" });
+      }
+
+      if (!recording.localFilePath) {
+        return res.status(404).json({ error: "Recording file not found" });
+      }
+
+      // Import fs for streaming
+      const fsSync = await import('fs');
+      const stat = await fs.stat(recording.localFilePath);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+
+      if (range) {
+        // Handle range request for video seeking
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        const file = fsSync.createReadStream(recording.localFilePath, {start, end});
+        const head = {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': 'video/webm',
+        };
+        res.writeHead(206, head);
+        file.pipe(res);
+      } else {
+        // No range, send entire file
+        const head = {
+          'Content-Length': fileSize,
+          'Content-Type': 'video/webm',
+        };
+        res.writeHead(200, head);
+        fsSync.createReadStream(recording.localFilePath).pipe(res);
+      }
+    } catch (error) {
+      console.error('❌ Stream recording error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to stream recording" });
+      }
+    }
+  });
+
+  // Serve recording file for download
+  app.get("/api/recordings/:id/file", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = (req.session as any).userId;
+      const recording = await recordingStorage.getRecording(id);
+      
+      if (!recording) {
+        return res.status(404).json({ error: "Recording not found" });
+      }
+
+      // Check if user has access (creator or participant)
+      const hasAccess = recording.userId === userId || 
+                        (recording.participants && recording.participants.includes(userId));
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Unauthorized to download this recording" });
+      }
+
+      if (!recording.localFilePath) {
+        return res.status(404).json({ error: "Recording file not found" });
+      }
+
+      // Check if file exists
+      try {
+        await fs.access(recording.localFilePath);
+      } catch (error) {
+        return res.status(404).json({ error: "Recording file not found on server" });
+      }
+
+      // Send file
+      res.download(recording.localFilePath, `${recording.roomName}-${id}.webm`, (err) => {
+        if (err) {
+          console.error('❌ File download error:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: "Failed to download file" });
+          }
+        }
+      });
+    } catch (error) {
+      console.error('❌ Serve recording file error:', error);
+      res.status(500).json({ error: "Failed to serve recording file" });
+    }
+  });
+
+  // Force cleanup stale recordings for a room (utility endpoint)
+  app.post("/api/recordings/cleanup/:roomId", requireAuth, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+
+      // Get all active recordings for the room
+      const activeRecording = await recordingStorage.getActiveRecording(roomId);
+      
+      if (!activeRecording) {
+        return res.json({ 
+          message: 'No active recordings found',
+          cleaned: 0 
+        });
+      }
+
+      // Mark as failed
+      await recordingStorage.updateRecording(activeRecording.id, {
+        status: 'failed',
+        error: 'Manually cleaned up',
+        endTime: new Date()
+      });
+
+      console.log('✅ Cleaned up recording:', activeRecording.id);
+      res.json({ 
+        message: 'Recording cleaned up successfully',
+        cleaned: 1,
+        recordingId: activeRecording.id
+      });
+    } catch (error) {
+      console.error('❌ Cleanup recording error:', error);
+      res.status(500).json({ error: "Failed to cleanup recording" });
+    }
+  });
+
+  // Delete recording
+  app.delete("/api/recordings/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = (req.session as any).userId;
+
+      const recording = await recordingStorage.getRecording(id);
+      if (!recording) {
+        return res.status(404).json({ error: "Recording not found" });
+      }
+
+      // Only the creator can delete the recording
+      if (recording.userId !== userId) {
+        return res.status(403).json({ error: "Only the recording creator can delete it" });
+      }
+
+      // Delete the file if it exists
+      if (recording.localFilePath) {
+        await fs.unlink(recording.localFilePath).catch(() => {});
+      }
+
+      // Delete from database
+      await recordingStorage.deleteRecording(id);
+
+      console.log('✅ Recording deleted:', id);
+      res.json({ message: "Recording deleted successfully" });
+    } catch (error) {
+      console.error('❌ Delete recording error:', error);
+      res.status(500).json({ error: "Failed to delete recording" });
     }
   });
 

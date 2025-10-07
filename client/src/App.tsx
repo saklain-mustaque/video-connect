@@ -73,7 +73,7 @@ function AppRouter() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="evtaar" storageKey="evtaar-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>

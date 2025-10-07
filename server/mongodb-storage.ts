@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { connectDB } from './mongodb-connection';
+import { connectDB, getMongoClient } from './mongodb-connection';
 import { User, Room, Message } from '../shared/mongodb-schema';
 import type { 
   IUser, 
@@ -368,6 +368,18 @@ export class MongoDBStorage implements IStorage {
       }));
     } catch (error) {
       console.error('MongoDB error in getMessagesByRoom:', error);
+      throw error;
+    }
+  }
+
+  // Get recordings collection (for raw MongoDB operations)
+  async getRecordingsCollection() {
+    try {
+      const client = await getMongoClient();
+      const db = client.db();
+      return db.collection('recordings');
+    } catch (error) {
+      console.error('MongoDB error in getRecordingsCollection:', error);
       throw error;
     }
   }
