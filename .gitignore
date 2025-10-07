@@ -7,3 +7,4 @@ vite.config.ts.*
 *.md
 uploads/
 recordings/
+.env
