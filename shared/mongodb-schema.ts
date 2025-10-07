@@ -35,6 +35,8 @@ export interface IMessage extends Document {
   fileName?: string;
   fileSize?: number;
   fileType?: string;
+  recipientId?: mongoose.Types.ObjectId;
+  recipientName?: string;
   timestamp: Date;
 }
 
@@ -133,6 +135,15 @@ const messageSchema = new Schema<IMessage>({
   fileType: {
     type: String
   },
+  recipientId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
+  recipientName: {
+    type: String,
+    required: false
+  },
   timestamp: {
     type: Date,
     default: Date.now
@@ -198,5 +209,7 @@ export type MessageType = {
   fileName?: string;
   fileSize?: number;
   fileType?: string;
+  recipientId?: string;
+  recipientName?: string;
   timestamp: Date;
 };

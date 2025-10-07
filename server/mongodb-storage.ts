@@ -295,7 +295,9 @@ export class MongoDBStorage implements IStorage {
     type: string = 'text',
     fileName?: string,
     fileSize?: number,
-    fileType?: string
+    fileType?: string,
+    recipientId?: string,
+    recipientName?: string
   ): Promise<any> {
     try {
       await this.ensureConnection();
@@ -316,6 +318,8 @@ export class MongoDBStorage implements IStorage {
         fileName: fileName || undefined,
         fileSize: fileSize || undefined,
         fileType: fileType || undefined,
+        recipientId: recipientId ? new mongoose.Types.ObjectId(recipientId) : undefined,
+        recipientName: recipientName || undefined,
         timestamp: new Date()
       });
       
@@ -331,6 +335,8 @@ export class MongoDBStorage implements IStorage {
         fileName: savedMessage.fileName,
         fileSize: savedMessage.fileSize,
         fileType: savedMessage.fileType,
+        recipientId: savedMessage.recipientId?.toString(),
+        recipientName: savedMessage.recipientName,
         timestamp: savedMessage.timestamp,
       };
     } catch (error) {
@@ -364,6 +370,8 @@ export class MongoDBStorage implements IStorage {
         fileName: msg.fileName,
         fileSize: msg.fileSize,
         fileType: msg.fileType,
+        recipientId: msg.recipientId?.toString(),
+        recipientName: msg.recipientName,
         timestamp: msg.timestamp,
       }));
     } catch (error) {

@@ -21,7 +21,7 @@ import { useCreateLayoutContext } from '@livekit/components-react';
 import { usePinnedTracks, useTracks } from '@livekit/components-react';
 import { ControlBar } from '@livekit/components-react';
 
-import ChatPanel from './ChatPanel';
+import EnhancedChatPanel from './EnhancedChatPanel';
 
 export interface CustomVideoConferenceProps extends React.HTMLAttributes<HTMLDivElement> {
   roomId: string;
@@ -155,7 +155,7 @@ export function CustomVideoConference({
           </div>
 
           {widgetState.showChat && (
-            <ChatPanel
+            <EnhancedChatPanel
               roomId={roomId}
               userId={userId}
               userName={userName}

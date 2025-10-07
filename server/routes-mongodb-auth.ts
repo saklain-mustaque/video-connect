@@ -5,6 +5,7 @@ import MongoStore from "connect-mongo";
 import { MongoDBStorage } from "./mongodb-storage";
 import { liveKitService } from "./livekit-service";
 import { recordingStorage } from "./recording-storage";
+import { registerChunkedUploadRoutes } from './chunked-upload';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import multer from 'multer';
@@ -33,35 +34,20 @@ const sessionConfig = {
     sameSite: 'lax' as const, // Use 'lax' for better compatibility with IP access
     // Don't set domain - let it auto-detect
   },
-  proxy: true, // Always trust proxy for better cloud compatibility
-  name: 'sessionId' // Use a custom session name
+  proxy: true,
+  name: 'sessionId' 
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Session middleware
   app.use(session(sessionConfig));
 
-  // Debug middleware for session (only in development)
   if (process.env.NODE_ENV !== 'production') {
     app.use((req: any, res: any, next: any) => {
-      // console.log('Session Debug:', {
-      //   sessionID: req.sessionID,
-      //   session: req.session,
-      //   cookies: req.headers.cookie
-      // });
       next();
     });
   }
 
-  // Authentication middleware
-  const requireAuth = (req: any, res: any, next: any) => {
-    // console.log('Auth Check:', {
-    //   hasSession: !!req.session,
-    //   userId: req.session?.userId,
-    //   sessionID: req.sessionID,
-    //   path: req.path
-    // });
-    
+  const requireAuth = (req: any, res: any, next: any) => {    
     if (!req.session?.userId) {
       console.error('Authentication failed: No userId in session');
       return res.status(401).json({ 
@@ -73,7 +59,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
-  // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, displayName, password, email } = req.body;
@@ -206,7 +191,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User routes (some protected)
   app.post("/api/users", async (req, res) => {
     try {
       const { username, displayName, password = 'temp_password' } = req.body;
@@ -252,7 +236,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check if username exists
   app.get("/api/users/by-username/:username", async (req, res) => {
     try {
       const user = await mongoStorage.getUserByUsername(req.params.username);
@@ -270,7 +253,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Room routes (all protected)
   app.post("/api/rooms", requireAuth, async (req, res) => {
     try {
       const { name } = req.body;
@@ -538,66 +520,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Start recording
-  app.post("/api/recordings/start", requireAuth, async (req, res) => {
-    try {
-      const { roomId, roomCode, roomName } = req.body;
-      const userId = (req.session as any).userId;
+app.post("/api/recordings/start", requireAuth, async (req, res) => {
+  try {
+    const { roomId, roomCode, roomName } = req.body;
+    const userId = (req.session as any).userId;
 
-      if (!roomId || !roomCode || !roomName) {
-        return res.status(400).json({ 
-          error: "Missing required fields: roomId, roomCode, and roomName are required" 
+    if (!roomId || !roomCode || !roomName) {
+      return res.status(400).json({ 
+        error: "Missing required fields: roomId, roomCode, and roomName are required" 
+      });
+    }
+
+    // Get user info
+    const user = await mongoStorage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if there's already an active recording for this room
+    const activeRecording = await recordingStorage.getActiveRecording(roomId);
+    if (activeRecording) {
+      // Check if the recording is stale (older than 5 minutes without completion)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      if (activeRecording.startTime < fiveMinutesAgo && !activeRecording.endTime) {
+        // Mark stale recording as failed and allow new recording
+        console.log('⚠️ Found stale recording, marking as failed:', activeRecording.id);
+        await recordingStorage.updateRecording(activeRecording.id, {
+          status: 'failed',
+          error: 'Recording abandoned - timeout',
+          endTime: new Date()
+        });
+      } else {
+        return res.status(409).json({ 
+          error: "A recording is already in progress for this room. Please stop the current recording first.",
+          recordingId: activeRecording.id
         });
       }
-
-      // Get user info
-      const user = await mongoStorage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      // Check if there's already an active recording for this room
-      const activeRecording = await recordingStorage.getActiveRecording(roomId);
-      if (activeRecording) {
-        // Check if the recording is stale (older than 5 minutes without completion)
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-        if (activeRecording.startTime < fiveMinutesAgo && !activeRecording.endTime) {
-          // Mark stale recording as failed and allow new recording
-          console.log('⚠️ Found stale recording, marking as failed:', activeRecording.id);
-          await recordingStorage.updateRecording(activeRecording.id, {
-            status: 'failed',
-            error: 'Recording abandoned',
-            endTime: new Date()
-          });
-        } else {
-          return res.status(409).json({ 
-            error: "A recording is already in progress for this room. Please stop the current recording first.",
-            recordingId: activeRecording.id
-          });
-        }
-      }
-
-      // Create recording entry with temporary local file path
-      const tempFilePath = path.join('uploads', `recording-${Date.now()}.webm`);
-      const recording = await recordingStorage.createRecording(
-        roomId,
-        roomCode,
-        roomName,
-        userId,
-        user.displayName,
-        tempFilePath
-      );
-
-      console.log('✅ Recording started:', recording.id);
-      res.json({
-        recordingId: recording.id,
-        status: 'recording',
-        startTime: recording.startTime
-      });
-    } catch (error) {
-      console.error('❌ Start recording error:', error);
-      res.status(500).json({ error: "Failed to start recording" });
     }
-  });
+
+    // Create recording entry with temporary local file path
+    const tempFilePath = path.join('uploads', `recording-${Date.now()}.webm`);
+    const recording = await recordingStorage.createRecording(
+      roomId,
+      roomCode,
+      roomName,
+      userId,
+      user.displayName,
+      tempFilePath
+    );
+
+    console.log('✅ Recording started:', recording.id);
+    res.json({
+      recordingId: recording.id,
+      status: 'recording',
+      startTime: recording.startTime
+    });
+  } catch (error) {
+    console.error('❌ Start recording error:', error);
+    res.status(500).json({ error: "Failed to start recording" });
+  }
+});
 
   // Stop recording
   app.post("/api/recordings/:id/stop", requireAuth, async (req, res) => {
@@ -959,10 +941,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register chunked upload routes
+  registerChunkedUploadRoutes(app);
+
   // Chat message routes
   app.post("/api/rooms/:roomId/messages", requireAuth, async (req, res) => {
     try {
-      const { content, type = 'text', userName, fileName, fileSize, fileType } = req.body;
+      const { content, type = 'text', userName, fileName, fileSize, fileType, recipientId, recipientName } = req.body;
       const { roomId } = req.params;
       const sessionUserId = (req.session as any).userId; // Get authenticated user ID from session
       
@@ -987,7 +972,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type,
         fileName,
         fileSize,
-        fileType
+        fileType,
+        recipientId,
+        recipientName
       );
       
       console.log('✅ Message saved to MongoDB:', message.id);

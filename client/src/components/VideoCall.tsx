@@ -23,7 +23,7 @@ import {
   Minimize2,
   Maximize2,
 } from "lucide-react";
-import ChatPanel from "./ChatPanel";
+import EnhancedChatPanel from "./EnhancedChatPanel";
 import ParticipantsList from "./ParticipantsList";
 import FileShare from "./FileShare";
 import SettingsPanel from "./SettingsPanel";
@@ -231,7 +231,7 @@ useEffect(() => {
           {(showChat || showParticipants || showFileShare || showSettings) && (
             <div className="w-80 border-l bg-card flex flex-col">
               {showChat && (
-                <ChatPanel 
+                <EnhancedChatPanel 
                   roomId={roomCode}
                   userId={username}
                   userName={displayName}

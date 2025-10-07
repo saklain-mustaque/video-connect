@@ -1,16 +1,26 @@
-import { Video, Square, Loader2, Circle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useRecording } from '@/hooks/useRecording';
-import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState, useCallback } from 'react';
-import { useDataChannel, useParticipants } from '@livekit/components-react';
+import { useState, useCallback } from 'react';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Circle, Square, Loader2, AlertCircle, Monitor, Video } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useRecording } from "@/hooks/useRecording";
 
 interface RecordingButtonProps {
   roomId: string;
   roomCode: string;
   roomName: string;
   mediaStream: MediaStream | null;
-  userName?: string;
+  userName: string;
 }
 
 export function RecordingButton({
@@ -18,306 +28,298 @@ export function RecordingButton({
   roomCode,
   roomName,
   mediaStream,
-  userName = 'Someone'
+  userName,
 }: RecordingButtonProps) {
   const { toast } = useToast();
-  const { isRecording, isUploading, startRecording, stopAndUpload, addParticipant } = useRecording();
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [remoteRecordingActive, setRemoteRecordingActive] = useState(false);
-  const [recordingStartedBy, setRecordingStartedBy] = useState<string>('');
-  const participants = useParticipants();
+  const [showDialog, setShowDialog] = useState(false);
+  const [recordingType, setRecordingType] = useState<'camera' | 'screen'>('screen');
+  const [showStopDialog, setShowStopDialog] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
 
-  // Track new participants joining during recording
-  useEffect(() => {
-    if (isRecording && participants.length > 0) {
-      participants.forEach(participant => {
-        addParticipant(participant.identity);
-      });
-    }
-  }, [participants, isRecording, addParticipant]);
+  const {
+    isRecording,
+    isUploading,
+    startRecording: startRecordingHook,
+    stopAndUpload,
+  } = useRecording();
 
-  // Handle incoming recording status messages from other participants
-  const handleIncomingRecordingStatus = useCallback((data: any) => {
-    try {
-      const statusData = JSON.parse(new TextDecoder().decode(data.payload));
-      
-      if (statusData.type === 'recording_status') {
-        console.log('📹 Received recording status:', statusData);
-        
-        if (statusData.status === 'started') {
-          setRemoteRecordingActive(true);
-          setRecordingStartedBy(statusData.userName);
-          
-          // Show toast notification to all participants
-          toast({
-            title: 'Recording Started',
-            description: `${statusData.userName} started recording this meeting`,
-          });
-        } else if (statusData.status === 'stopped') {
-          setRemoteRecordingActive(false);
-          setRecordingStartedBy('');
-          
-          toast({
-            title: 'Recording Stopped',
-            description: `${statusData.userName} stopped the recording`,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to parse recording status:', error);
-    }
-  }, [toast]);
-
-  const { send: sendRecordingStatus } = useDataChannel('recording_status', handleIncomingRecordingStatus);
-
-  // Broadcast recording status to all participants
-  const broadcastRecordingStatus = async (status: 'started' | 'stopped') => {
-    if (!sendRecordingStatus) return;
-    
-    try {
-      const statusMessage = {
-        type: 'recording_status',
-        status,
-        userName,
-        timestamp: new Date().toISOString(),
-        roomId,
-      };
-      
-      await sendRecordingStatus(new TextEncoder().encode(JSON.stringify(statusMessage)), {
-        reliable: true,
-      });
-      
-      console.log('✅ Broadcast recording status:', status);
-    } catch (error) {
-      console.error('❌ Failed to broadcast recording status:', error);
-    }
-  };
-
-  // Timer for recording duration
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (isRecording || remoteRecordingActive) {
-      interval = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-    } else {
-      setRecordingDuration(0);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRecording, remoteRecordingActive]);
-
-  const formatDuration = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    
-    if (hrs > 0) {
-      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleToggleRecording = async () => {
+  const startRecording = useCallback(async (type: 'camera' | 'screen') => {
     try {
-      if (isRecording) {
-        toast({
-          title: 'Stopping recording',
-          description: 'Processing and uploading...'
-        });
+      let streamToRecord: MediaStream | null = null;
 
-        const result = await stopAndUpload();
-        
-        // Broadcast stopped status
-        await broadcastRecordingStatus('stopped');
-        
-        toast({
-          title: 'Recording saved',
-          description: `Uploaded successfully (${(result.fileSize / 1024 / 1024).toFixed(2)} MB)`,
-        });
-      } else {
-        if (!mediaStream) {
+      if (type === 'screen') {
+        // Request screen capture
+        try {
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+              displaySurface: 'browser', // or 'window', 'monitor'
+              width: { ideal: 1920, max: 1920 },
+              height: { ideal: 1080, max: 1080 },
+              frameRate: { ideal: 30, max: 30 }
+            },
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              sampleRate: 44100
+            }
+          });
+
+          // Combine screen video with mic audio
+          const combinedStream = new MediaStream();
+          
+          // Add video from screen
+          displayStream.getVideoTracks().forEach(track => {
+            combinedStream.addTrack(track);
+          });
+
+          // Add audio from mediaStream (microphone) if available
+          if (mediaStream) {
+            mediaStream.getAudioTracks().forEach(track => {
+              combinedStream.addTrack(track);
+            });
+          }
+
+          streamToRecord = combinedStream;
+          setScreenStream(displayStream);
+
+          // Handle user stopping screen share
+          displayStream.getVideoTracks()[0].addEventListener('ended', () => {
+            console.log('Screen sharing stopped by user');
+            handleStopRecording();
+          });
+
+        } catch (error) {
+          console.error('Screen capture failed:', error);
           toast({
-            title: 'Cannot start recording',
-            description: 'Please wait for your camera and microphone to be ready, then try again.',
-            variant: 'destructive'
+            title: "Screen Capture Failed",
+            description: "Please allow screen sharing permission",
+            variant: "destructive",
           });
           return;
         }
-
-        // Check if stream has tracks
-        const tracks = mediaStream.getTracks();
-        if (tracks.length === 0) {
-          toast({
-            title: 'Cannot start recording',
-            description: 'No audio or video tracks available. Please check your camera and microphone permissions.',
-            variant: 'destructive'
-          });
-          return;
-        }
-
-        console.log('Starting recording with stream:', {
-          videoTracks: mediaStream.getVideoTracks().length,
-          audioTracks: mediaStream.getAudioTracks().length
-        });
-
-        // Get current participant IDs
-        const participantIds = participants.map(p => p.identity);
-        console.log('Recording participants:', participantIds);
-
-        await startRecording(roomId, roomCode, roomName, mediaStream, participantIds);
-        
-        // Broadcast started status with room info for participant tracking
-        await broadcastRecordingStatus('started');
-        
-        toast({
-          title: 'Recording started',
-          description: 'Your call is now being recorded'
-        });
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to toggle recording';
-      
-      console.error('Recording toggle error:', error);
-      
-      // If there's a conflict error, offer to cleanup
-      if (errorMessage.includes('already in progress')) {
-        toast({
-          title: 'Recording conflict',
-          description: errorMessage,
-          variant: 'destructive',
-          action: (
-            <button
-              onClick={handleCleanupStaleRecording}
-              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded"
-            >
-              Clear & Retry
-            </button>
-          ),
-        });
       } else {
-        toast({
-          title: 'Recording error',
-          description: errorMessage,
-          variant: 'destructive'
-        });
+        // Use camera stream
+        streamToRecord = mediaStream;
       }
-    }
-  };
 
-  const handleCleanupStaleRecording = async () => {
-    try {
-      const response = await fetch(`/api/recordings/cleanup/${roomId}`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+      if (!streamToRecord || streamToRecord.getTracks().length === 0) {
+        toast({
+          title: "No Media Available",
+          description: `Please enable your ${type === 'screen' ? 'screen sharing' : 'camera and microphone'}`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-      if (!response.ok) throw new Error('Failed to cleanup recording');
+      await startRecordingHook(roomId, roomCode, roomName, streamToRecord);
 
-      const data = await response.json();
+      // Start timer
+      setRecordingTime(0);
+      const interval = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      setTimerInterval(interval);
+
       toast({
-        title: 'Cleanup successful',
-        description: data.message,
+        title: "Recording Started",
+        description: `Recording ${type === 'screen' ? 'screen' : 'camera feed'}...`,
       });
 
-      // Try starting recording again after cleanup
-      if (mediaStream) {
-        await startRecording(roomId, roomCode, roomName, mediaStream);
-        toast({
-          title: 'Recording started',
-          description: 'Your call is now being recorded'
-        });
-      }
+      setShowDialog(false);
     } catch (error) {
+      console.error('Failed to start recording:', error);
+      
+      // Clean up any stale recording state
+      try {
+        await fetch(`/api/recordings/cleanup/${roomId}`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+      } catch (cleanupError) {
+        console.error('Cleanup failed:', cleanupError);
+      }
+
       toast({
-        title: 'Cleanup failed',
-        description: error instanceof Error ? error.message : 'Failed to cleanup recording',
-        variant: 'destructive'
+        title: "Recording Failed",
+        description: error instanceof Error ? error.message : "Failed to start recording",
+        variant: "destructive",
       });
     }
-  };
+  }, [roomId, roomCode, roomName, mediaStream, startRecordingHook, toast]);
 
-  if (isUploading) {
-    return (
-      <Button
-        disabled
-        variant="ghost"
-        size="sm"
-        className="relative"
-        title="Uploading Recording"
-        data-testid="button-recording"
-      >
-        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-        <span className="text-xs font-medium">Uploading...</span>
-      </Button>
-    );
-  }
+  const handleStopRecording = useCallback(async () => {
+    try {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+
+      // Stop screen stream if it exists
+      if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
+        setScreenStream(null);
+      }
+
+      toast({
+        title: "Processing Recording",
+        description: "Stopping and uploading recording...",
+      });
+
+      await stopAndUpload();
+
+      toast({
+        title: "Recording Saved",
+        description: "Your recording has been saved successfully!",
+      });
+
+      setRecordingTime(0);
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      
+      toast({
+        title: "Upload Failed",
+        description: "Recording stopped but upload failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setShowStopDialog(false);
+    }
+  }, [stopAndUpload, toast, timerInterval, screenStream]);
 
   if (isRecording) {
     return (
-      <Button
-        onClick={handleToggleRecording}
-        variant="destructive"
-        size="sm"
-        className="relative group"
-        title="Stop Recording"
-        data-testid="button-recording"
-      >
-        {/* Animated recording indicator */}
-        <div className="absolute -top-1 -right-1 w-3 h-3">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-        </div>
-        
-        <Circle className="w-4 h-4 mr-2 fill-current" />
-        <div className="flex flex-col items-start">
-          <span className="text-xs font-bold">Recording</span>
-          <span className="text-[10px] font-mono opacity-90">{formatDuration(recordingDuration)}</span>
-        </div>
-      </Button>
-    );
-  }
+      <>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setShowStopDialog(true)}
+          className="gap-2 animate-pulse"
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Square className="w-4 h-4 fill-current" />
+              Stop ({formatTime(recordingTime)})
+            </>
+          )}
+        </Button>
 
-  // Show recording status if someone else is recording
-  if (remoteRecordingActive) {
-    return (
-      <Button
-        disabled
-        variant="destructive"
-        size="sm"
-        className="relative opacity-75 cursor-not-allowed"
-        title={`Recording by ${recordingStartedBy}`}
-        data-testid="button-recording-remote"
-      >
-        {/* Animated recording indicator */}
-        <div className="absolute -top-1 -right-1 w-3 h-3">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-        </div>
-        
-        <Circle className="w-4 h-4 mr-2 fill-current" />
-        <div className="flex flex-col items-start">
-          <span className="text-xs font-bold">Recording</span>
-          <span className="text-[10px] opacity-90">{recordingStartedBy}</span>
-        </div>
-      </Button>
+        <AlertDialog open={showStopDialog} onOpenChange={setShowStopDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Stop Recording?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Recording duration: {formatTime(recordingTime)}
+                <br />
+                The recording will be processed and saved.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Continue Recording</AlertDialogCancel>
+              <AlertDialogAction onClick={handleStopRecording} disabled={isUploading}>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  'Stop & Save'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
 
   return (
-    <Button
-      onClick={handleToggleRecording}
-      variant="ghost"
-      size="sm"
-      className="hover:bg-red-500/10 hover:text-red-500 transition-all duration-200"
-      title="Start Recording"
-      data-testid="button-recording"
-    >
-      <Video className="w-4 h-4 mr-2" />
-      <span className="text-xs font-medium">Record</span>
-    </Button>
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setShowDialog(true)}
+        className="gap-2"
+      >
+        <Circle className="w-4 h-4 text-red-500 fill-red-500" />
+        Record
+      </Button>
+
+      <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start Recording</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose what you want to record:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="flex flex-col gap-3 my-4">
+            <Button
+              variant="outline"
+              className="h-auto p-4 justify-start"
+              onClick={() => {
+                setRecordingType('screen');
+                startRecording('screen');
+              }}
+            >
+              <Monitor className="w-5 h-5 mr-3" />
+              <div className="text-left">
+                <div className="font-semibold">Record Screen</div>
+                <div className="text-xs text-muted-foreground">
+                  Record entire meeting interface (Recommended)
+                </div>
+              </div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto p-4 justify-start"
+              onClick={() => {
+                setRecordingType('camera');
+                startRecording('camera');
+              }}
+            >
+              <Video className="w-5 h-5 mr-3" />
+              <div className="text-left">
+                <div className="font-semibold">Record Camera</div>
+                <div className="text-xs text-muted-foreground">
+                  Record only your camera feed
+                </div>
+              </div>
+            </Button>
+          </div>
+
+          <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+            <div className="flex gap-2">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-yellow-800 dark:text-yellow-200">
+                <strong>Screen Recording:</strong> Captures the entire meeting including all participants.
+                <br />
+                <strong>Camera Recording:</strong> Only captures your video feed.
+              </div>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
